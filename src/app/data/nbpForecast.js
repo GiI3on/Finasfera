@@ -1,17 +1,19 @@
 // src/data/nbpForecast.js
-// NBP – Projekcja inflacji (lipiec 2025): CPI r/r (%)
-// Źródło: nbp.pl / „Projekcja inflacji i PKB – lipiec 2025” (tabela CPI).
-// Aktualizację robisz edytując poniższą tablicę (np. po listopadowej projekcji).
+const START_YEAR = new Date().getFullYear();
+const YEARS_AHEAD = 15;
 
+function buildPath(start, n, startCpi = 5.0, target = 2.7) {
+  const out = [];
+  let cur = startCpi;
+  for (let i = 0; i < n; i++) {
+    cur = target + (cur - target) * 0.55;
+    out.push({ year: start + i, cpi: Math.max(0, Math.round(cur * 10) / 10) });
+  }
+  return out;
+}
+
+export const NBP_CPI_FORECAST = buildPath(START_YEAR, YEARS_AHEAD);
 export const NBP_FORECAST_META = {
-  title: "NBP – Projekcja inflacji i PKB (lipiec 2025)",
-  release: "2025-07-01", // przybliżona data publikacji
-  source: "NBP",
+  source: "heuristic-local",
+  generatedAt: new Date().toISOString(),
 };
-
-export const NBP_CPI_FORECAST = [
-  { year: 2025, cpi: 3.9 },
-  { year: 2026, cpi: 3.1 },
-  { year: 2027, cpi: 2.4 },
-];
-// Jeśli NBP opublikuje dalsze lata – dopisz kolejne obiekty.

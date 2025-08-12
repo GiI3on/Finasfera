@@ -1,16 +1,9 @@
 // src/app/api/nbp-forecast/route.js
 import { NextResponse } from "next/server";
-import { NBP_CPI_FORECAST, NBP_FORECAST_META } from "@/data/nbpForecast";
-// Jeśli alias "@" nie działa u Ciebie, zamień import na relatywny:
-// import { NBP_CPI_FORECAST, NBP_FORECAST_META } from "../../../../data/nbpForecast";
+import { NBP_CPI_FORECAST, NBP_FORECAST_META } from "../../data/nbpForecast";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/nbp-forecast?years=10
- * Zwraca listę { year, cpi } (r/r %) dla kolejnych lat.
- * Po ostatnim roku z danych NBP ekstrapolujemy stałą ostatnią wartość.
- */
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const years = Math.max(1, Math.min(60, Number(searchParams.get("years") || 10)));

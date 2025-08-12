@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/node": "^24.2.1",
+    "@types/react": "^19.1.9",
     "axios": "^1.11.0",
     "chart.js": "^4.4.4",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
-    "firebase": "^12.0.0",
+    "firebase": "^12.1.0",
     "framer-motion": "^12.23.12",
     "fuse.js": "^7.1.0",
     "lucide-react": "^0.536.0",
@@ -25,6 +27,7 @@
     "react-gauge-chart": "^0.5.1",
     "react-tooltip": "^5.29.1",
     "recharts": "^3.1.2",
+    "typescript": "^5.9.2",
     "yahoo-finance2": "^2.13.3"
   },
   "devDependencies": {
