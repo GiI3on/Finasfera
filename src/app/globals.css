@@ -7,7 +7,8 @@
 html, body { min-height: 100%; }
 body {
   @apply text-zinc-100 antialiased;
-  background: linear-gradient(to bottom, #0b0b10, #000);
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(250,204,21,0.05), transparent 60%),
+              linear-gradient(to bottom, #0b0b10, #000);
 }
 header, nav, .topnav { background: transparent !important; }
 
@@ -16,55 +17,69 @@ header, nav, .topnav { background: transparent !important; }
 .h2 { @apply text-xl font-semibold text-zinc-200; }
 .muted { @apply text-zinc-400; }
 
-/* === Typewriter cursor for "FIRE" === */
+/* === "FIRE" cursor === */
 .typewriter { position: relative; display: inline-block; padding-right: 10px; }
 .typewriter::after {
-  content: "";
-  position: absolute; right: 0; top: 10%; bottom: 10%;
-  width: 2px; background: #facc15; border-radius: 1px;
-  animation: cursor-blink 1s step-end infinite;
+  content: ""; position: absolute; right: 0; top: 12%; bottom: 12%;
+  width: 2px; background: #facc15; border-radius: 1px; animation: cursor-blink 1s step-end infinite;
 }
 @keyframes cursor-blink { 0%,50% {opacity:1} 51%,100% {opacity:0} }
 
 /* === Cards === */
-.card       { @apply rounded-2xl border border-zinc-700/60 bg-zinc-900/70 shadow-sm; }
+.card {
+  @apply rounded-2xl border border-zinc-800 bg-zinc-950/60
+         shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_6px_20px_-10px_rgba(0,0,0,0.6)];
+}
 .card-inner { @apply p-4 sm:p-5; }
 .card, .card-inner { position: relative; }
-.card-inner { overflow: visible; } /* ważne dla wykresu/tooltipa */
+.card-inner { overflow: visible; }
 
-/* === KPI tiles === */
-.kpi       { @apply rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3; }
-.kpi-label { @apply text-xs tracking-wide text-zinc-400; }
-.kpi-value { @apply text-lg font-bold text-yellow-400 mt-1; }
+/* === KPI === */
+.kpi       { @apply rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/30 p-4; }
+.kpi-label { @apply text-[11px] uppercase tracking-wide text-zinc-400; }
+.kpi-value { @apply mt-1 text-2xl font-semibold text-zinc-100; }
 
-/* === Form === */
-.input {
-  @apply w-full rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-100 px-3 py-2;
-}
+/* === Stat chips === */
+.stat-chip  { @apply rounded-xl border border-zinc-800 bg-zinc-900/40 p-4; }
+.stat-label { @apply text-sm text-zinc-400; }
+.stat-value { @apply text-2xl font-semibold text-zinc-100; }
+.stat-bad   { @apply text-red-500; }
+
+/* === Segmented (zakres / tabs) === */
+.segmented { @apply inline-flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-900/50 p-1; }
+.segmented > button { @apply px-3 py-1.5 text-sm rounded-lg text-zinc-300 hover:bg-zinc-800; }
+.segmented > button[data-active="true"] { @apply bg-yellow-500 text-black; }
+
+/* === Toolbar === */
+.toolbar { @apply flex flex-wrap items-center justify-between gap-3; }
+.toolbar-right { @apply flex items-center gap-2; }
+.badge { @apply text-xs px-2 py-1 rounded-lg border border-zinc-700 text-zinc-300; }
+
+/* === Inputs/Buttons === */
+.input { @apply w-full rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-100 px-3 py-2; }
 .input:focus { @apply outline-none ring-2 ring-yellow-400/30 border-zinc-600; }
-
-.btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-3 font-semibold transition; }
+.btn { @apply inline-flex items-center justify-center rounded-xl px-3 py-2 font-semibold transition; }
 .btn-primary { @apply btn bg-yellow-400 text-black hover:brightness-95 shadow-sm; }
 .btn-primary:disabled { @apply opacity-60 cursor-not-allowed; }
+.btn-ghost { @apply px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-200 hover:bg-zinc-800; }
 
-/* === Info "i" badges === */
-.i-badge {
-  @apply inline-flex items-center justify-center align-middle
-  h-4 w-4 text-[10px] font-bold rounded-full bg-zinc-700 text-zinc-100 ml-2;
-}
-
-/* === Chart (Recharts) – warstwy, wygląd === */
-.chart-stack { position: relative; z-index: 10; }
-
-/* kontener wykresu: stała wysokość + nad tłem karty */
+/* === Charts === */
 .chart-wrap  { height: 380px; position: relative; z-index: 10; }
+.recharts-default-tooltip { @apply !rounded-lg !border !border-zinc-700 !bg-zinc-900/95 !text-zinc-100 !p-2; }
 
-/* upewniamy się, że płótno i tooltip są nad tłem */
-.chart-stack .recharts-wrapper,
-.chart-stack .recharts-surface { position: relative; z-index: 10; }
-.chart-stack .recharts-tooltip-wrapper { z-index: 30 !important; }
-
-/* (opcjonalnie) usuwamy marginesy, gdy wykres w węższych kartach */
-@media (max-width: 640px) {
-  .chart-wrap { height: 340px; }
+/* === Monthly table === */
+.monthly th, .monthly td { @apply align-middle; }
+.monthly td > .cell {
+  @apply rounded-md text-xs px-1.5 py-1 text-center;
+}
+/* === React Grid Layout (minimal) === */
+.react-grid-layout { position: relative; }
+.react-grid-item { transition: all .2s ease; }
+.react-grid-item.cssTransforms { transition-property: transform,width,height; }
+.react-grid-item.resizing { z-index: 2; }
+.react-grid-item.react-draggable-dragging { z-index: 3; }
+.react-resizable-handle{
+  position:absolute; width:12px; height:12px; bottom:6px; right:6px;
+  border-right:2px solid rgba(250,204,21,.9); border-bottom:2px solid rgba(250,204,21,.9);
+  opacity:.7;
 }

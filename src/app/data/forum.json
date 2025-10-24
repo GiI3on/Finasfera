@@ -1,0 +1,34 @@
+{
+  "threads": [
+    {
+      "id": "powitanie",
+      "slug": "powitanie",
+      "title": "Witaj na Forum FinaSfery!",
+      "author": "Zespół FinaSfery",
+      "tag": "Ogłoszenia",
+      "createdAt": "2025-08-22T09:00:00Z",
+      "likes": 0,
+      "comments": 2,
+      "isPinned": true,
+      "isFeatured": true,
+      "excerpt": "Kilka wskazówek jak zacząć: przedstaw się, opisz swoje cele FIRE i dopytaj o wszystko – społeczność chętnie pomoże! 🚀",
+      "body": "Hej! 🎉\n\nMiło Cię widzieć w naszej społeczności FIRE. Zacznij od krótkiego przywitania i opisu swoich celów. Jeśli masz pytania o inwestowanie, budżet, ETF-y czy ścieżkę FIRE — śmiało zakładaj wątek.\n\nPowodzenia i do zobaczenia w dyskusjach! 💛"
+    }
+  ],
+  "replies": {
+    "powitanie": [
+      {
+        "id": "r1",
+        "author": "Patryk",
+        "createdAt": "2025-08-22T10:10:00Z",
+        "body": "Super, dzięki za stworzenie tego miejsca!"
+      },
+      {
+        "id": "r2",
+        "author": "Anna",
+        "createdAt": "2025-08-22T11:30:00Z",
+        "body": "Cześć wszystkim — trzymam kciuki za Wasze cele FIRE! 🔥"
+      }
+    ]
+  }
+}

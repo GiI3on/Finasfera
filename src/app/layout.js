@@ -1,4 +1,3 @@
-// src/app/layout.js
 import "./globals.css";
 import TopNav from "./components/TopNav";
 import AuthProvider from "./components/AuthProvider";
@@ -11,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pl">
-      <body className="min-h-screen bg-black text-zinc-100">
+      <body className="min-h-screen">
         <AuthProvider>
           <TopNav />
           {children}

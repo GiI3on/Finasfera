@@ -5,11 +5,15 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "./AuthProvider";
 
+
 /** Linki głównej nawigacji */
 const links = [
   { href: "/", label: "Kalkulator FIRE" },
   { href: "/fire-path", label: "Twoja ścieżka FIRE" },
   { href: "/moj-portfel", label: "Mój portfel" },
+  { href: "/statystyki",  label: "Statystyki" },
+  { href: "/forum", label: "Forum" },
+ 
 ];
 
 function isActive(pathname, href) {
