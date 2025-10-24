@@ -302,3 +302,91 @@ export async function apiToggleReaction(payload: { threadId: string; uid?: strin
   dbg("apiToggleReaction:ok", out);
   return out;
 }
+
+/* ────────────────────────────────────────────────────────────
+   DODANE: CREATE POST (dla /forum/posts/route.js)
+───────────────────────────────────────────────────────────── */
+export async function apiCreatePost(payload: {
+  threadId: string;
+  body: string;
+  uid?: string;
+  name?: string;
+  isAnonymous?: boolean;
+}) {
+  const tid = String(payload?.threadId || "").trim();
+  const body = String(payload?.body || "").trim();
+  const uid = String(payload?.uid || "anon").trim();
+  const name = String(payload?.name || "Użytkownik").trim();
+
+  if (!tid || !body) {
+    const e: any = new Error("missing threadId/body");
+    e.status = 400;
+    throw e;
+  }
+
+  const threadRef = db.collection("threads").doc(tid);
+  const postsRef = threadRef.collection("posts");
+
+  const now = FieldValue.serverTimestamp();
+  const postRef = postsRef.doc();
+
+  const post = {
+    id: postRef.id,
+    threadId: tid,
+    authorId: uid,
+    author: name,
+    body,
+    status: "published",
+    createdAt: now,
+    updatedAt: now,
+    accepted: false,
+  };
+
+  await postRef.set(post);
+  await threadRef.set(
+    { lastPostAt: now, repliesCount: FieldValue.increment(1) },
+    { merge: true }
+  );
+
+  // zwrot przyjazny dla klienta (ISO dla createdAt)
+  return {
+    id: postRef.id,
+    threadId: tid,
+    authorId: uid,
+    author: name,
+    body,
+    status: "published",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+/* ────────────────────────────────────────────────────────────
+   DODANE: ACCEPT ANSWER (dla /forum/threads/[id]/accept/route.js)
+───────────────────────────────────────────────────────────── */
+export async function apiAcceptAnswer(payload: { threadId: string; postId: string }) {
+  const tid = String(payload?.threadId || "").trim();
+  const pid = String(payload?.postId || "").trim();
+  if (!tid || !pid) {
+    const e: any = new Error("missing ids");
+    e.status = 400;
+    throw e;
+  }
+
+  const threadRef = db.collection("threads").doc(tid);
+  const postRef = threadRef.collection("posts").doc(pid);
+
+  await db.runTransaction(async (trx) => {
+    trx.set(
+      postRef,
+      { accepted: true, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+    trx.set(
+      threadRef,
+      { acceptedPostId: pid, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+  });
+
+  return { ok: true, acceptedPostId: pid };
+}
