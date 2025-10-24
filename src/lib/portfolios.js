@@ -27,7 +27,9 @@ import {
  */
 export function listenPortfolios(uid, callback) {
   if (!uid) {
-    try { callback([]); } catch {}
+    try {
+      callback([]);
+    } catch {}
     return () => {};
   }
 
@@ -62,18 +64,24 @@ export function listenPortfolios(uid, callback) {
           });
         });
 
-        try { callback(list); } catch {}
+        try {
+          callback(list);
+        } catch {}
       },
       (err) => {
         console.error("[listenPortfolios] onSnapshot error:", err);
-        try { callback([]); } catch {}
+        try {
+          callback([]);
+        } catch {}
       }
     );
 
     return off;
   } catch (e) {
     console.error("[listenPortfolios] setup error:", e);
-    try { callback([]); } catch {}
+    try {
+      callback([]);
+    } catch {}
     return () => {};
   }
 }
@@ -89,7 +97,7 @@ export function safePortfolioDoc(uid, portfolioId) {
   if (isReservedDocId(normalized)) {
     throw new Error(
       `safePortfolioDoc: użyto zarezerwowanego ID "${normalized}". ` +
-      `Użyj "ALL" w UI i nie przekazuj tej wartości do doc().`
+        `Użyj "ALL" w UI i nie przekazuj tej wartości do doc().`
     );
   }
   return doc(db, "users", uid, "portfolios", normalized);
@@ -106,7 +114,7 @@ export async function createPortfolio(uid, { id, name, ...rest } = {}) {
 
   const base = {
     name: name || "Portfel",
-    createdAt: serverTimestamp(), // ok do orderBy + odczytu
+    createdAt: serverTimestamp(),
     archived: false,
     deleted: false,
     ...rest,
@@ -121,4 +129,33 @@ export async function createPortfolio(uid, { id, name, ...rest } = {}) {
   const colRef = collection(db, "users", uid, "portfolios");
   const res = await addDoc(colRef, base);
   return { id: res.id, ...base };
+}
+
+/**
+ * Zmiana nazwy portfela.
+ */
+export async function renamePortfolio(uid, id, newName) {
+  if (!uid || !id) throw new Error("missing uid/id");
+  const ref = doc(db, "users", uid, "portfolios", String(id));
+  await setDoc(
+    ref,
+    { name: String(newName || "Portfel"), updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+  return { id: String(id), name: String(newName || "Portfel") };
+}
+
+/**
+ * Miękkie usunięcie portfela (oznaczenie deleted: true).
+ * UI filtruje deleted === true, więc portfel znika z listy.
+ */
+export async function deletePortfolio(uid, id) {
+  if (!uid || !id) throw new Error("missing uid/id");
+  const ref = doc(db, "users", uid, "portfolios", String(id));
+  await setDoc(
+    ref,
+    { deleted: true, deletedAt: serverTimestamp() },
+    { merge: true }
+  );
+  return { ok: true, id: String(id) };
 }
