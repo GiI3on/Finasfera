@@ -2,6 +2,7 @@
 import { getApps, initializeApp, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import 'server-only';
 
 /** Buduje credential z env albo z GOOGLE_APPLICATION_CREDENTIALS */
 function buildCredential() {
