@@ -1,3 +1,4 @@
+// src/lib/portfolios.js
 "use client";
 
 import { db } from "./firebase";
@@ -7,6 +8,9 @@ import {
   onSnapshot,
   query,
   orderBy,
+  addDoc,
+  setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import {
@@ -89,4 +93,32 @@ export function safePortfolioDoc(uid, portfolioId) {
     );
   }
   return doc(db, "users", uid, "portfolios", normalized);
+}
+
+/**
+ * Utworzenie portfela (na kliencie – Firestore Web SDK).
+ * - jeśli przekażesz { id }, zapisze dokładnie pod tym ID (merge)
+ * - w przeciwnym razie zrobi auto-ID
+ * Zwraca { id, ...fields } dla wygody UI.
+ */
+export async function createPortfolio(uid, { id, name, ...rest } = {}) {
+  if (!uid) throw new Error("missing uid");
+
+  const base = {
+    name: name || "Portfel",
+    createdAt: serverTimestamp(), // ok do orderBy + odczytu
+    archived: false,
+    deleted: false,
+    ...rest,
+  };
+
+  if (id) {
+    const ref = doc(db, "users", uid, "portfolios", String(id));
+    await setDoc(ref, base, { merge: true });
+    return { id: String(id), ...base };
+  }
+
+  const colRef = collection(db, "users", uid, "portfolios");
+  const res = await addDoc(colRef, base);
+  return { id: res.id, ...base };
 }
