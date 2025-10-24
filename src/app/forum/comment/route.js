@@ -1,6 +1,6 @@
 // src/app/forum/comment/route.js
 import { NextResponse } from "next/server";
-import { adminDb } from "lib/firebaseAdmin";
+import { adminDb } from "../../../lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
 
 /* ===== Pomocnik: znajdź wątek po docId / id / publicId ===== */
