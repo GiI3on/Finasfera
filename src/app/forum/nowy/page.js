@@ -1,11 +1,14 @@
 // src/app/forum/nowy/page.js
 "use client";
 
-import { useState } from "react";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "../../components/AuthProvider";
 
-export default function NewThreadPage() {
+function NewThreadForm() {
   const { user } =
     (typeof useAuth === "function" ? useAuth() : { user: null }) || { user: null };
   const params = useSearchParams();
@@ -120,9 +123,7 @@ export default function NewThreadPage() {
                 className="input"
                 placeholder="Krótki, konkretny tytuł…"
               />
-              <div className="mt-1 text-[11px] text-zinc-500">
-                Minimum 4 znaki.
-              </div>
+              <div className="mt-1 text-[11px] text-zinc-500">Minimum 4 znaki.</div>
             </div>
 
             <div>
@@ -222,7 +223,11 @@ export default function NewThreadPage() {
             disabled={!canSubmit || busy}
             className="btn-primary h-10 px-5 disabled:opacity-60"
           >
-            {busy ? "Zapisywanie…" : isPromo ? "Utwórz wpis sponsorowany" : "Utwórz wątek"}
+            {busy
+              ? "Zapisywanie…"
+              : isPromo
+              ? "Utwórz wpis sponsorowany"
+              : "Utwórz wątek"}
           </button>
           <button
             type="button"
@@ -234,5 +239,13 @@ export default function NewThreadPage() {
         </div>
       </form>
     </main>
+  );
+}
+
+export default function NewThreadPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewThreadForm />
+    </Suspense>
   );
 }
