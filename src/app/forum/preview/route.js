@@ -1,6 +1,6 @@
 // src/app/forum/comments/preview/route.js
 import { NextResponse } from "next/server";
-import { adminDb } from "../../../../lib/firebaseAdmin";
+import { adminDb } from "lib/firebaseAdmin";
 
 // GET /forum/comments/preview?threadId=...&limit=2&sort=top
 export async function GET(req) {
