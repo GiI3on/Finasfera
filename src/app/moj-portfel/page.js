@@ -1,12 +1,9 @@
 "use client";
 
-import AuthGate from "../fire-path/AuthGate";
-import PortfolioScreen from "../components/PortfolioScreen";
-
 export default function Page() {
   return (
-    <AuthGate>
-      <PortfolioScreen title="Mój Portfel" />
-    </AuthGate>
+    <main className="p-8">
+      <h1 className="text-2xl text-green-400">SMOKE: /moj-portfel działa (goła strona)</h1>
+    </main>
   );
 }
