@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://finasfera.pl/sitemap.xml

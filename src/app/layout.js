@@ -7,9 +7,12 @@ export const metadata = {
   title: "Finasfera",
   description: "Kalkulator FIRE i portfel inwestycyjny",
   verification: {
-    google: "Lo2tpbGKiA4R2gW4N_UEpuhTurpkbyVfDiPQbfIEuUo", // Google Search Console
+    google: "Lo2tpbGKiA4R2gW4N_UEpuhTurpkbyVfDiPQbfIEuUo",
   },
+  metadataBase: new URL("https://finasfera.pl"),
+  alternates: { canonical: "/" },
 };
+
 
 export default function RootLayout({ children }) {
   return (
