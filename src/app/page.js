@@ -212,12 +212,12 @@ export default function Page() {
     }
   }, []);
 
-  // Auto-zapis gdy zmienia się cel (to rozwiązuje „ustawiłem 80k -> przechodzę do /fire-path”)
+  // Auto-zapis gdy zmienia się cel
   useEffect(() => {
     savePlan();
   }, [annualExpenses, targetMultiplier, useNBPPath, customWageGrowth]);
 
-  // Ładowanie CPI NBP z fallbackiem (nie blokuje „Oblicz”)
+  // Ładowanie CPI NBP z fallbackiem
   useEffect(() => {
     let stop = false;
     async function load() {
@@ -292,11 +292,11 @@ export default function Page() {
       reachedAt,
     });
 
-    // zapis po przeliczeniu (użytkownik zwykle klika ten przycisk)
+    // zapis po przeliczeniu
     savePlanExplicit(makePlan());
   }
 
-  // klik w „Zapisz swój plan” – zapis + przejście
+  // klik w „Zapisz swój plan”
   function handleSaveClick() {
     savePlanExplicit(makePlan());
   }
@@ -318,7 +318,7 @@ export default function Page() {
         </div>
       )}
 
-      {/* Dwie kolumny — bez pustych przerw, zawsze symetrycznie */}
+      {/* Dwie kolumny */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch auto-rows-fr">
         {/* ZAŁOŻENIA */}
         <div className="card flex flex-col h-full">
@@ -585,12 +585,43 @@ export default function Page() {
         </div>
       </section>
 
-      {/* Edukacja */}
+      {/* Edukacja (bez FAQ; + 2 nowe karty) */}
       <section className="card mt-10">
         <div className="card-inner">
           <h3 className="h2 mb-4">Dowiedz się więcej o FIRE i metodologii</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* NOWA karta — Niezależność finansowa */}
+            <article className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+              <h4 className="text-lg font-semibold text-zinc-100">Niezależność finansowa (FIRE) w praktyce</h4>
+              <p className="muted mt-1">
+                FIRE to prosty cel: zbudować kapitał, który utrzyma Twoje wydatki. Nie chodzi o „szybkie triki”,
+                tylko o sensowny plan, regularne wpłaty i długi horyzont.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link href="/fire-path" className="btn-primary px-3 py-2">Policz swoją ścieżkę</Link>
+                <Link href="/forum" className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+                  Zapytaj społeczność →
+                </Link>
+              </div>
+            </article>
+
+            {/* NOWA karta — Jak zacząć małymi kwotami */}
+            <article className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+              <h4 className="text-lg font-semibold text-zinc-100">Jak zacząć inwestować małe kwoty</h4>
+              <p className="muted mt-1">
+                Wystarczy stała wpłata (np. 200–500 zł miesięcznie) i trzymanie się planu. Procent składany robi robotę,
+                a prosty portfel indeksowy to dobre pierwsze podejście.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link href="/kalkulator-inwestycyjny" className="btn-primary px-3 py-2">Kalkulator inwestycyjny</Link>
+                <Link href="/portfel-inwestycyjny" className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+                  Portfel online
+                </Link>
+              </div>
+            </article>
+
+            {/* Istniejące karty — zostają */}
             <article className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
               <h4 className="text-lg font-semibold text-zinc-100">Na czym polega FIRE?</h4>
               <p className="muted mt-1">
@@ -603,7 +634,7 @@ export default function Page() {
               <h4 className="text-lg font-semibold text-zinc-100">Skąd 25× wydatków?</h4>
               <p className="muted mt-1">
                 To prosta reguła: 25× rocznych wydatków ≈ kapitał, z którego możesz wypłacać ~4% rocznie.
-                Nie jest to gwarancja, ale sensowny „punkt orientacyjny”, by złapać skalę celu.
+                Nie jest to gwarancja, ale sensowny punkt orientacyjny, by złapać skalę celu.
               </p>
             </article>
 
@@ -622,54 +653,6 @@ export default function Page() {
                 zarobków. To prosty „turbo-dopłacacz” dla Twojego planu.
               </p>
             </article>
-
-            <article className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-              <h4 className="text-lg font-semibold text-zinc-100">Pierwsze kroki</h4>
-              <ul className="list-disc pl-5 text-zinc-300 mt-1 space-y-1 text-sm">
-                <li>Ustal stałą wpłatę (nawet małą) i trzymaj się jej.</li>
-                <li>Trzymaj poduszkę bezpieczeństwa (3–6 mies. wydatków).</li>
-                <li>Dywersyfikuj, unikaj „strzałów życia”. Regularność wygrywa.</li>
-              </ul>
-            </article>
-
-            <article className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-              <h4 className="text-lg font-semibold text-zinc-100">Co dalej?</h4>
-              <p className="muted mt-1">
-                Zapisz plan i wracaj do niego. Z czasem możesz dodać portfel i śledzić postępy.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Link href="/fire-path" className="btn-primary px-3 py-2">Twoja ścieżka FIRE</Link>
-                <Link
-                  href="/statystyki"
-                  className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-                >
-                  Statystyki portfela
-                </Link>
-              </div>
-            </article>
-          </div>
-
-          {/* Mini-FAQ bez JS */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <details className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-              <summary className="cursor-pointer text-zinc-100 font-semibold">
-                Czy wynik uwzględnia inflację celu?
-              </summary>
-              <p className="muted mt-2">
-                Cel liczony jest jako <b>współczesne wydatki × mnożnik</b> (np. 25×). Robimy to celowo prosto,
-                żeby łatwiej „złapać skalę”. Wpłaty możesz indeksować (NBP lub własny %).
-              </p>
-            </details>
-
-            <details className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-              <summary className="cursor-pointer text-zinc-100 font-semibold">
-                Co jeśli moje założenia się zmienią?
-              </summary>
-              <p className="muted mt-2">
-                Spoko — po prostu wróć i przelicz. Najważniejsze to <b>regularność</b> i <b>czas w rynku</b>.
-                Liczby możesz korygować po drodze.
-              </p>
-            </details>
           </div>
         </div>
       </section>
