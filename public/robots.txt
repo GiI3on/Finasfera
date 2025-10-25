@@ -1,4 +1,13 @@
 User-agent: *
 Allow: /
 
+# Blokada wewnętrznych folderów (jeśli kiedyś dodasz)
+Disallow: /api/
+Disallow: /_next/
+Disallow: /static/
+
+# Główna mapa witryny (dla Google i Bing)
 Sitemap: https://finasfera.pl/sitemap.xml
+
+# Informacja o stronie
+Host: https://finasfera.pl
