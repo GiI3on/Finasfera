@@ -1,59 +1,89 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { auth } from "../lib/firebaseClient";
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut as fbSignOut } from "firebase/auth";
+import { auth, googleProvider } from "../lib/firebaseClient";
+import {
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut as fbSignOut,
+} from "firebase/auth";
 
-const Ctx = createContext({ user: undefined, signIn: async () => {}, signOut: async () => {} });
-export const useAuth = () => useContext(Ctx);
+const Ctx = createContext({
+  user: null,
+  loading: true,
+  signIn: async () => {},
+  signOut: async () => {},
+});
 
-export default function AuthProvider({ children }) {
-  const [user, setUser] = useState(undefined); // undefined = loading, null = nie zalogowany, {} = user
-  const [error, setError] = useState(null);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Ustaw trwałość sesji i język
   useEffect(() => {
-    if (!auth) {
-      console.warn("[auth] auth client not ready (check Firebase env)");
-      // nie blokuj UI w nieskończoność:
-      setUser(null);
-      return;
-    }
-    const unsub = onAuthStateChanged(
-      auth,
-      (u) => {
-        setUser(u || null);
-        setError(null);
-      },
-      (err) => {
-        console.error("[auth] onAuthStateChanged error:", err);
-        setError(err);
-        setUser(null); // pokaż ekran niezalogowany
+    let cancelled = false;
+    (async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+        auth.useDeviceLanguage?.();
+      } catch (e) {
+        console.error("[Auth] setPersistence error:", e);
+      } finally {
+        if (!cancelled) setLoading((l) => l); // no-op, czekamy na onAuthStateChanged
       }
-    );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Nasłuch stanu użytkownika (z porządkiem sprzątania)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u || null);
+      setLoading(false);
+    });
     return () => unsub();
   }, []);
 
-  async function signIn() {
-    if (!auth) return;
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch (e) {
-      console.error("[auth] signIn error:", e);
-      setError(e);
-    }
-  }
+  const api = useMemo(
+    () => ({
+      user,
+      loading,
+      signIn: async () => {
+        try {
+          await signInWithPopup(auth, googleProvider);
+        } catch (e) {
+          // Safari/iOS lub blokada popupu — fallback do redirect
+          const code = (e && e.code) || "";
+          const blocked =
+            code === "auth/popup-blocked" ||
+            code === "auth/popup-closed-by-user" ||
+            code === "auth/cancelled-popup-request";
+          if (blocked) {
+            await signInWithRedirect(auth, googleProvider);
+            return;
+          }
+          console.error("[Auth] signIn error:", e);
+          alert("Nie udało się otworzyć logowania. Spróbuj ponownie.");
+        }
+      },
+      signOut: async () => {
+        try {
+          await fbSignOut(auth);
+        } catch (e) {
+          console.error("[Auth] signOut error:", e);
+          alert("Wylogowanie nie powiodło się. Spróbuj ponownie.");
+        }
+      },
+    }),
+    [user, loading]
+  );
 
-  async function signOut() {
-    if (!auth) return;
-    try {
-      await fbSignOut(auth);
-    } catch (e) {
-      console.error("[auth] signOut error:", e);
-      setError(e);
-    }
-  }
-
-  const value = useMemo(() => ({ user, error, signIn, signOut }), [user, error]);
-
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }
+
+export const useAuth = () => useContext(Ctx);

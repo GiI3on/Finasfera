@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-/* === Twoje istniejące komponenty UI === */
+/* === komponenty z tego samego katalogu (ważne ścieżki!) === */
 import { useAuth } from "./AuthProvider";
 import LoginCard from "./LoginCard";
 import PortfolioChart from "./PortfolioChart";
@@ -11,21 +11,18 @@ import PortfolioSwitcher from "./PortfolioSwitcher";
 import AddTransactionButton from "./AddTransactionButton";
 import DeleteOrFixModal from "./DeleteOrFixModal";
 import ImportHistoryButton from "./ImportHistoryButton";
-import PortfolioTable from "../components/PortfolioTable";
+import PortfolioTable from "./PortfolioTable";
+
+/* === biblioteki / api === */
 import { publishPortfolioValue } from "../../lib/portfolioBridge";
 import { listenPortfolios } from "../../lib/portfolios";
-
-/* ==== NOWE: resolver par z katalogu ==== */
 import { resolvePair } from "../../lib/pairs";
-
-/* === Firestore store === */
 import {
   listenHoldings,
   removeHolding as fsDel,
   addCashOperation as _addCashOperation,
-  setLivePortfolioValue,                // ⬅️ DODAJ
+  setLivePortfolioValue,
 } from "../../lib/portfolioStore";
-
 
 /* ==== zakresy ==== */
 const RANGES = [
@@ -209,15 +206,9 @@ function normalizePortfolioId(id, { allowAll = false } = {}) {
   return str;
 }
 
-function chunk(array, size) {
-  const out = [];
-  for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
-  return out;
-}
-
 /* ================== EKRAN ================== */
 export default function PortfolioScreen({ title = "Mój Portfel" }) {
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
 
   const [currentPortfolioId, setCurrentPortfolioId] = useState(null);
   const [portfolioList, setPortfolioList] = useState([]);
@@ -255,9 +246,8 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
      HOLDINGS — SINGLE vs ALL
      ========================= */
   useEffect(() => {
-    if (!user) { setFsHoldings(null); return; }
+    if (loading || !user?.uid) { setFsHoldings(null); return; }
 
-    // tryb „Wszystkie portfele”
     if (currentPortfolioId === ALL_PORTFOLIO_ID) {
       const unsubs = [];
       const mapByPid = new Map(); // pid -> rows[]
@@ -267,8 +257,8 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
           for (const r of (rows || [])) {
             merged.push({
               ...r,
-              id: `${pid || "MAIN"}__${r.id}`,   // unikalny id w agregacie
-              __origin: pid || null,             // skąd pochodzi pozycja
+              id: `${pid || "MAIN"}__${r.id}`,
+              __origin: pid || null,
             });
           }
         }
@@ -277,11 +267,10 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
       const attach = (pid) => {
         const off = pid
           ? listenHoldings(user.uid, pid, (rows) => { mapByPid.set(pid, rows || []); emit(); })
-          : listenHoldings(user.uid,           (rows) => { mapByPid.set(null, rows || []); emit(); });
+          : listenHoldings(user.uid,       (rows) => { mapByPid.set(null, rows || []); emit(); });
         if (typeof off === "function") unsubs.push(off);
       };
 
-      // root + wszystkie nazwane
       attach(null);
       const ids = (portfolioList || []).map(p => p?.id).filter(Boolean);
       Array.from(new Set(ids)).forEach(attach);
@@ -289,18 +278,17 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
       return () => { unsubs.forEach(u => { try { u(); } catch {} }); };
     }
 
-    // tryb pojedynczego portfela (root lub wskazany)
     const off = currentPortfolioId
       ? listenHoldings(user.uid, currentPortfolioId, (items) => setFsHoldings(items))
       : listenHoldings(user.uid,                        (items) => setFsHoldings(items));
     return () => off?.();
-  }, [user, currentPortfolioId, portfolioList]);
+  }, [loading, user?.uid, currentPortfolioId, portfolioList]);
 
   /* =========================
      LISTA PORTFELI (id, nazwy)
      ========================= */
   useEffect(() => {
-    if (!user?.uid) {
+    if (loading || !user?.uid) {
       setPortfolioList([]);
       return;
     }
@@ -308,22 +296,15 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
       setPortfolioList(Array.isArray(items) ? items.filter(Boolean) : []);
     });
     return () => unsub?.();
-  }, [user?.uid]);
+  }, [loading, user?.uid]);
 
   const holdings = fsHoldings ?? [];
   const currentRange = RANGES.find((r) => r.key === rangeKey) || RANGES[3];
 
-  const normalizedCurrentPortfolioId = useMemo(
-    () => normalizePortfolioId(currentPortfolioId, { allowAll: true }),
-    [currentPortfolioId]
-  );
-
   const knownPortfolioIds = useMemo(() => {
     const ids = new Set([MAIN_PORTFOLIO_ID]);
     for (const item of portfolioList) {
-      if (item?.id != null && item.id !== "") {
-        ids.add(String(item.id));
-      }
+      if (item?.id != null && item.id !== "") ids.add(String(item.id));
     }
     const normalized = normalizePortfolioId(currentPortfolioId, { allowAll: false });
     if (normalized) ids.add(normalized);
@@ -332,7 +313,7 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
 
   // ====== PRE-RESOLVE PAR (yahoo/stooq) z katalogu ======
   useEffect(() => {
-    if (!Array.isArray(holdings) || !holdings.length) { setPairsById({}); return; }
+    if (loading || !Array.isArray(holdings) || !holdings.length) { setPairsById({}); return; }
     let alive = true;
     (async () => {
       try {
@@ -349,7 +330,7 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
       }
     })();
     return () => { alive = false; };
-  }, [holdings]);
+  }, [loading, holdings]);
 
   // stabilne sygnatury do efektów
   const quotesSig = useMemo(
@@ -367,6 +348,7 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
 
   /* ==== QUOTES – batch GET (1 request) ==== */
   useEffect(() => {
+    if (loading || !user?.uid) { setQuotes({}); return; }
     if (!holdings.length) { setQuotes({}); return; }
 
     const controller = new AbortController();
@@ -400,10 +382,11 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
     })();
 
     return () => controller.abort();
-  }, [quotesSig]);
+  }, [loading, user?.uid, quotesSig]);
 
   /* ==== HISTORY – więcej równoległości + forward-fill ==== */
   useEffect(() => {
+    if (loading || !user?.uid) { setSeries({}); setMissingDataRatio(0); setDayPerId({}); return; }
     if (!holdings.length) { setSeries({}); setMissingDataRatio(0); setDayPerId({}); return; }
 
     const controller = new AbortController();
@@ -482,9 +465,9 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
     })();
 
     return () => controller.abort();
-  }, [historySig, quotes]);
+  }, [loading, user?.uid, historySig, quotes]);
 
-  // --- ZAMIANA CAŁEGO BLOKU groups = useMemo(...) ---
+  /* ====== agregacja pozycji po symbolu ====== */
   const groups = useMemo(() => {
     const byKey = new Map();
 
@@ -530,7 +513,6 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
     return out.sort((a, b) => (b.value || 0) - (a.value || 0));
   }, [holdings, quotes, series, pairsById]);
 
-
   const totals = useMemo(() => {
     const cur = groups.reduce((a, g) => a + (g.value || 0), 0);
     const cost = groups.reduce((a, g) => a + (g.avgBuy * g.totalShares || 0), 0);
@@ -555,8 +537,9 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
     return { cur, cost, gainAbs: cur - cost, gainPct: cost > 0 ? ((cur - cost) / cost) * 100 : 0, day };
   }, [groups, holdings, dayPerId, quotes]);
 
-  // === EFEKT: publikuj i ZAPISUJ live value ===
+  // === publikuj i zapisz bieżącą wartość ===
   useEffect(() => {
+    if (loading || !user?.uid) return;
     if (!Number.isFinite(totals?.cur)) return;
 
     const value = Number(totals.cur) || 0;
@@ -568,7 +551,7 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
         currentPortfolioId: ALL_PORTFOLIO_ID,
         knownPortfolioIds,
       });
-      return; // w ALL nie zapisujemy per-portfel (brak id)
+      return;
     }
 
     const pidNorm = normalizePortfolioId(currentPortfolioId, { allowAll: false });
@@ -581,14 +564,13 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
       knownPortfolioIds,
     });
 
-    // ⬇️ Zapis live value do Firestore, by FIRE mogło to odczytać bez otwierania „Mój portfel”
     try {
       const pid = pidNorm === "" ? null : pidNorm; // root = null
-      setLivePortfolioValue(user?.uid, pid, value);
+      setLivePortfolioValue(user.uid, pid, value);
     } catch (_) {}
-  }, [totals?.cur, currentPortfolioId, knownPortfolioIds, user?.uid]);
+  }, [loading, user?.uid, totals?.cur, currentPortfolioId, knownPortfolioIds]);
 
-  const isLoadingUser = user === undefined;
+  const isLoadingUser = loading;
   const isLoggedIn = !!user;
 
   const addCashOperation =
@@ -599,10 +581,8 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
           alert("Uwaga: storna gotówkowe nie zostały zapisane (brak addCashOperation). Usunięto tylko akcje.");
         };
 
-  /* ==== COFNIJ ZAKUP – z optymistycznym usunięciem z tabeli ==== */
   async function handleUndoError(lot, preview) {
     try {
-      // Uwaga: w trybie ALL operacje edycyjne mogłyby wymagać portfolioId z lot.__origin
       setFsHoldings(prev => Array.isArray(prev) ? prev.filter(r => r.id !== lot.id) : prev);
       await fsDel(user?.uid, currentPortfolioId, lot.id);
 
@@ -672,7 +652,6 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
 
           {/* KPI — NA GÓRZE */}
           <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            {/* Wartość portfela */}
             <div className="card">
               <div className="card-inner">
                 <div className="muted text-sm">Wartość portfela</div>
@@ -682,7 +661,6 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
               </div>
             </div>
 
-            {/* Dzienny zysk */}
             <div className="card">
               <div className="card-inner">
                 <div className="muted text-sm">Dzienny zysk</div>
@@ -692,7 +670,6 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
               </div>
             </div>
 
-            {/* Całkowity zysk */}
             <div className="card">
               <div className="card-inner">
                 <div className="muted text-sm">Całkowity zysk</div>
@@ -728,7 +705,6 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
 
             <div className="flex items-center gap-2 ml-auto">
               <PortfolioSwitcher uid={user.uid} value={currentPortfolioId} onChange={setCurrentPortfolioId} />
-              {/* W trybie ALL nie pokazujemy przycisków, żeby nie pisać do pseudo-portfela */}
               {currentPortfolioId !== ALL_PORTFOLIO_ID && (
                 <>
                   <ImportHistoryButton uid={user.uid} portfolioId={currentPortfolioId} />

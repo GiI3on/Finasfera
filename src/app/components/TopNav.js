@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
-
 
 /** Linki głównej nawigacji */
 const links = [
@@ -13,7 +12,6 @@ const links = [
   { href: "/moj-portfel", label: "Mój portfel" },
   { href: "/statystyki",  label: "Statystyki" },
   { href: "/forum", label: "Forum" },
- 
 ];
 
 function isActive(pathname, href) {
@@ -26,6 +24,12 @@ export default function TopNav() {
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, signIn, signOut } = useAuth();
+
+  // ⬇️ Zamknij wszystkie panele/menu przy każdej zmianie ścieżki
+  useEffect(() => {
+    setOpen(false);
+    setMenuOpen(false);
+  }, [pathname]);
 
   const initials =
     user?.displayName
