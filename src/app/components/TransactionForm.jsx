@@ -9,6 +9,7 @@ import {
   addWithdrawal,
   listenCashBalance,
 } from "../../lib/portfolioStore";
+import { isWeekend, prevWeekday, snapToLastClose } from "../../lib/marketSnap"; // ⬅️ DODANE
 
 /* ==== helpers ==== */
 const fmtPLN = (v) =>
@@ -169,19 +170,55 @@ export default function TransactionForm({
 
     // Kupno / Sprzedaż
     if (canPickAsset && !pair?.yahoo) return setError("Wybierz spółkę/ETF z listy.");
-    if (qtyN <= 0 || priceN <= 0)  return setError("Podaj dodatnie: ilość i cenę.");
+
+    // ⬇⬇⬇ DODANE: snap do ostatniego dnia sesyjnego i ceny zamknięcia ≤ data
+    let effDate = date;
+    if (isWeekend(effDate)) {
+      effDate = prevWeekday(effDate);
+    }
+
+    // bazowo bierzemy przeliczoną cenę z formularza
+    let effPricePLN = pricePLN;
+
+    // jeśli weekend/święto albo cena niepodana/≤0 — spróbuj pobrać ostatni close ≤ effDate
+    if (isWeekend(date) || !Number.isFinite(priceN) || priceN <= 0) {
+      try {
+        const snap = await snapToLastClose({ pair: { yahoo: pair?.yahoo }, targetDate: effDate });
+        if (snap && Number.isFinite(snap.price)) {
+          effDate = snap.dateISO || effDate;
+          effPricePLN = Number(snap.price);
+          setCcy("PLN");
+          setVerifyMsg(`Użyto kursu z ${effDate}: ${effPricePLN.toFixed(2)} PLN`);
+        }
+      } catch {
+        // ignorujemy – walidacja niżej
+      }
+    }
+
+    if (qtyN <= 0 || !Number.isFinite(effPricePLN) || effPricePLN <= 0) {
+      return setError("Podaj dodatnie: ilość i cenę (lub wybierz prawidłową datę).");
+    }
+
+    // przelicz fee i totals na podstawie EFEKTYWNEJ ceny
+    const effGross = qtyN * effPricePLN;
+    const effFee =
+      feeMode === "kwota" ? toNum(feeVal)
+        : feeMode === "%" ? (effGross * toNum(feeVal)) / 100
+        : 0;
+    const effTotalBuy  = Math.max(0, effGross + effFee);
+    const effTotalSell = Math.max(0, effGross - effFee);
 
     if (type === "Kupno") {
-      if (topUpMode === "brak" && balance < totalBuy) {
+      if (topUpMode === "brak" && balance < effTotalBuy) {
         return setError(
-          `Brak środków: potrzeba ${fmtPLN(totalBuy)}, saldo ${fmtPLN(balance)}. ` +
+          `Brak środków: potrzeba ${fmtPLN(effTotalBuy)}, saldo ${fmtPLN(balance)}. ` +
           `Wybierz „pełna kwota zakupu” lub „tylko różnica”.`
         );
       }
 
       const topUpVal =
-        topUpMode === "pełna" ? totalBuy :
-        topUpMode === "różnica" ? Math.max(0, totalBuy - balance) :
+        topUpMode === "pełna" ? effTotalBuy :
+        topUpMode === "różnica" ? Math.max(0, effTotalBuy - balance) :
         toNum(topUp);
 
       await addHolding(
@@ -191,8 +228,8 @@ export default function TransactionForm({
           name: pair?.name || pair?.yahoo || query || "—",
           pair: { yahoo: pair?.yahoo, currency: ccy },
           shares: qtyN,
-          buyPrice: pricePLN,
-          buyDate: date,
+          buyPrice: effPricePLN,   // ⬅️ UŻYJ EFEKTYWNEJ CENY (snapowanej)
+          buyDate: effDate,        // ⬅️ UŻYJ EFEKTYWNEJ DATY (dzień notowania)
         },
         { autoTopUp: false, topUp: topUpVal }
       );
@@ -204,12 +241,13 @@ export default function TransactionForm({
       await sellPosition(uid, portfolioId ?? null, {  // ⬅️ portfolioId
         yahoo: pair?.yahoo,
         qty: qtyN,
-        price: pricePLN,
-        date,
+        price: effPricePLN, // ⬅️ EFEKTYWNA CENA
+        date: effDate,      // ⬅️ EFEKTYWNA DATA
         note: "Sprzedaż",
       });
       return finish();
     }
+    // ⬆⬆⬆ KONIEC DODANEGO BLOKU
   }
 
   return (
@@ -235,7 +273,7 @@ export default function TransactionForm({
           <label className="muted text-sm">Data</label>
           <div className="relative">
             <input type="date" className="input w-full" value={date} onChange={(e) => setDate(e.target.value)} />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-400">🗓️</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-400"></span>
           </div>
         </div>
       </div>

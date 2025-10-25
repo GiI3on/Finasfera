@@ -83,3 +83,35 @@ header, nav, .topnav { background: transparent !important; }
   border-right:2px solid rgba(250,204,21,.9); border-bottom:2px solid rgba(250,204,21,.9);
   opacity:.7;
 }
+
+/* === Date input (biały tekst + żółty kalendarz) === */
+input[type="date"] {
+  color-scheme: dark;           /* ciemny motyw */
+  background-color: #18181b;    /* tło */
+  color: #ffffff;               /* data – biała */
+  border: 1px solid #3f3f46;    /* szary border */
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* żółty obrys przy focus */
+input[type="date"]:focus {
+  outline: none;
+  border-color: #facc15;
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.3);
+}
+
+/* ikonka kalendarza – żółta */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(84%) sepia(78%) saturate(600%) hue-rotate(2deg) brightness(100%) contrast(95%);
+  opacity: .95;
+}
+
+/* Firefox fix (ciemne tło + biała data) */
+@-moz-document url-prefix() {
+  input[type="date"] {
+    background-color: #18181b;
+    color: #ffffff;
+    border: 1px solid #3f3f46;
+  }
+}
