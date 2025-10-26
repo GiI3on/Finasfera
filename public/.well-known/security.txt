@@ -1,0 +1,4 @@
+Contact: mailto:kontakt.finasfera@gmail.com
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: pl, en
+Canonical: https://finasfera.pl/.well-known/security.txt
