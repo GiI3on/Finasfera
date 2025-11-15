@@ -17,7 +17,10 @@ const TopNav = dynamic(
 
 // Cookie banner (bez SSR)
 const CookieBanner = dynamic(
-  () => import("./components/CookieBanner").then((m) => m.default ?? m.CookieBanner),
+  () =>
+    import("./components/CookieBanner").then(
+      (m) => m.default ?? m.CookieBanner
+    ),
   { ssr: false }
 );
 
@@ -33,7 +36,7 @@ export const metadata = {
     "finansowa niezależność",
     "kalkulator inwestycyjny",
     "portfel inwestycyjny",
-    "forum finansowe"
+    "forum finansowe",
   ],
   openGraph: {
     title: "Finasfera — Twoja droga do finansowej niezależności",
@@ -64,7 +67,8 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           {/* === Pasek informacyjny o wersji beta === */}
           <div className="bg-yellow-500 text-black text-sm text-center py-2 font-medium">
-            Finasfera.pl — wersja testowa (beta). Funkcjonalność może ulec zmianie.
+            Finasfera.pl — wersja testowa (beta). Funkcjonalność może ulec
+            zmianie.
           </div>
 
           <TopNav />
@@ -74,13 +78,31 @@ export default function RootLayout({ children }) {
         {/* === Baner cookies (pokazuje się raz) === */}
         <CookieBanner />
 
+        {/* === Google Analytics (GA4) === */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-8424WRRES0"
+        ></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-8424WRRES0', {
+                page_path: window.location.pathname,
+              });
+            `,
+          }}
+        />
+
         {/* === Stopka Finasfera === */}
         <footer className="mt-12 border-t border-zinc-800 pt-8 pb-6 text-sm text-zinc-400">
           <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between gap-4">
             <div>
               <p>
-                © 2025 Finasfera.pl — niezależny projekt edukacyjny o inwestowaniu
-                i metodologii FIRE.
+                © 2025 Finasfera.pl — niezależny projekt edukacyjny o
+                inwestowaniu i metodologii FIRE.
               </p>
               <p>
                 Kontakt:{" "}
@@ -108,10 +130,10 @@ export default function RootLayout({ children }) {
             </div>
           </div>
           <p className="text-xs mt-4 text-zinc-500">
-            Uwaga: Finasfera.pl jest obecnie w fazie testowej (beta). Funkcjonalność może
-            ulec zmianie, a dane prezentowane w kalkulatorach i statystykach mają
-            charakter orientacyjny. W przyszłości planowane jest wprowadzenie wersji
-            komercyjnej.
+            Uwaga: Finasfera.pl jest obecnie w fazie testowej (beta).
+            Funkcjonalność może ulec zmianie, a dane prezentowane w
+            kalkulatorach i statystykach mają charakter orientacyjny. W
+            przyszłości planowane jest wprowadzenie wersji komercyjnej.
           </p>
         </footer>
 
