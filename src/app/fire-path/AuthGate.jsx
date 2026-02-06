@@ -3,7 +3,7 @@
 import { useAuth } from "../components/AuthProvider";
 
 export default function AuthGate({ children }) {
-  let auth = { user: null, loading: false };
+  let auth = { user: null, loading: false, signIn: async () => {} };
   try {
     auth = useAuth?.() || auth;
   } catch {
@@ -28,40 +28,51 @@ export default function AuthGate({ children }) {
     );
   }
 
+  // 🔓 NIEZALOGOWANY → widok DEMO + normalna strona pod spodem
   if (!user) {
-    // Użytkownik niezalogowany – pokaż komunikat i przycisk
     return (
-      <main className="mx-auto max-w-md px-4 py-24">
-        <div className="card">
-          <div className="card-inner text-center">
-            <h1 className="h2 mb-2">Zaloguj się</h1>
-            <p className="muted mb-6">
-              Aby zobaczyć swoją ścieżkę FIRE, musisz być zalogowany.
-            </p>
+      <>
+        <section className="mx-auto max-w-7xl px-4 mt-8">
+          <div className="card">
+            <div className="card-inner text-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-yellow-500/40 bg-yellow-500/10 text-yellow-300 text-xs mb-3">
+                DEMO
+              </div>
 
-            <button
-              onClick={() => {
-                try {
-                  signIn?.();
-                } catch (e) {
-                  console.error("Błąd logowania:", e);
-                  alert("Nie udało się uruchomić logowania.");
-                }
-              }}
-              className="btn-primary w-full"
-            >
-              Zaloguj się
-            </button>
+              <h2 className="h2 mb-2">Etapy Wolności — wersja demo</h2>
 
-            <p className="mt-3 text-xs text-zinc-500">
-              Po zalogowaniu zostaniesz automatycznie przeniesiony do tej strony.
-            </p>
+              <p className="muted text-sm max-w-2xl mx-auto">
+                Poniżej widzisz przykładowy podgląd „Etapów Wolności”. Po
+                zalogowaniu podłączymy Twoje prawdziwe portfele i postęp.
+              </p>
+
+              <button
+                onClick={() => {
+                  try {
+                    signIn?.();
+                  } catch (e) {
+                    console.error("Błąd logowania:", e);
+                    alert("Nie udało się uruchomić logowania.");
+                  }
+                }}
+                className="btn-primary inline-flex px-5 py-2 text-sm mt-4"
+              >
+                Zaloguj się i zobacz swoje dane
+              </button>
+
+              <p className="mt-3 text-xs text-zinc-500">
+                Po zalogowaniu automatycznie zobaczysz dane z Twojego konta.
+              </p>
+            </div>
           </div>
-        </div>
-      </main>
+        </section>
+
+        {/* tu renderuje się normalna strona /fire-path */}
+        {children}
+      </>
     );
   }
 
-  // Zalogowany — wpuszczamy dalej
+  // 🔐 ZALOGOWANY — pełny widok
   return children;
 }

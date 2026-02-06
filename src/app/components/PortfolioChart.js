@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -18,6 +18,12 @@ const fmtPLN = (v) =>
     style: "currency",
     currency: "PLN",
     maximumFractionDigits: 0,
+  }).format(Math.round(v || 0));
+
+const fmtCompact = (v) =>
+  new Intl.NumberFormat("pl-PL", {
+    notation: "compact",
+    maximumFractionDigits: 1,
   }).format(Math.round(v || 0));
 
 const MONTHS_SHORT = [
@@ -54,40 +60,83 @@ export default function PortfolioChart({
   longRange = false,
   overlays = [],
 }) {
+  /* ===== MOBILE ONLY: lepsza czytelność (bez ruszania desktopu) ===== */
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mq = window.matchMedia("(max-width: 640px)");
+    const apply = () => setIsMobile(!!mq.matches);
+    apply();
+
+    // Safari fallback
+    if (mq.addEventListener) {
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    } else {
+      mq.addListener(apply);
+      return () => mq.removeListener(apply);
+    }
+  }, []);
+
+  const effectiveHeight = isMobile ? Math.max(height, 300) : height;
+
+  const axisFont = isMobile ? 13 : 12;
+  const xMinTickGap = isMobile ? 32 : 22;
+
+  const yTickFormatter = useMemo(() => {
+    if (!isMobile) return fmtPLN;
+    return (v) => fmtCompact(v); // krócej na telefonie: "25 tys."
+  }, [isMobile]);
+
   /* =======================
      1) PORTFEL (PLN) — suma
      z forward-fill’em i
      bez wiodących zer
      ======================= */
   const baseData = useMemo(() => {
-    // zbierz wszystkie daty z już znormalizowanych serii
+    const seriesEntries = Object.entries(seriesBySymbol || {});
+    if (!seriesEntries.length) return [];
+
+    // 1) zbierz wszystkie daty
     const dates = new Set();
-    Object.values(seriesBySymbol).forEach(({ history }) =>
-      (history || []).forEach((p) => p?.t && dates.add(p.t))
-    );
+    for (const [, s] of seriesEntries) {
+      for (const p of s?.history || []) if (p?.t) dates.add(p.t);
+    }
     const allDates = Array.from(dates).sort();
     if (!allDates.length) return [];
 
-    // policz surową sumę (bez fill’a)
+    // 2) zbuduj mapy date->close dla szybkiego lookup (bez .find O(n^2))
+    const mapByKey = new Map();
+    for (const [key, s] of seriesEntries) {
+      const m = new Map();
+      for (const p of s?.history || []) {
+        if (!p?.t) continue;
+        const c = Number(p.close);
+        if (Number.isFinite(c)) m.set(p.t, c);
+      }
+      mapByKey.set(key, m);
+    }
+
+    // 3) policz sumę dla każdej daty
     const raw = allDates.map((d) => {
       let total = 0;
-      for (const key in seriesBySymbol) {
-        const { history, shares } = seriesBySymbol[key] || {};
-        const p = (history || []).find((x) => x.t === d);
-        if (p && Number.isFinite(p.close) && Number.isFinite(shares)) {
-          total += p.close * shares;
-        }
+      for (const [key, s] of seriesEntries) {
+        const shares = Number(s?.shares) || 0;
+        if (!(shares > 0)) continue;
+        const c = mapByKey.get(key)?.get(d);
+        if (Number.isFinite(c)) total += c * shares;
       }
       return { t: d, total: Number.isFinite(total) ? total : 0 };
     });
 
-    // odetnij wiodące zera (przed pierwszą realną wartością portfela)
+    // 4) odetnij wiodące zera
     let firstIdx = 0;
     while (firstIdx < raw.length && !(raw[firstIdx].total > 0)) firstIdx++;
     const trimmed = raw.slice(firstIdx);
 
-    // forward-fill: jeżeli w środku trafia się „0” (dziura w danych danego dnia),
-    // użyj ostatniej znanej wartości portfela
+    // 5) forward-fill "dziur" w środku
     const out = [];
     let last = 0;
     for (const row of trimmed) {
@@ -97,9 +146,7 @@ export default function PortfolioChart({
       } else if (last > 0) {
         out.push({ t: row.t, total: last });
       }
-      // jeżeli last==0 i row.total==0 — pomijamy
     }
-
     return out;
   }, [seriesBySymbol]);
 
@@ -121,7 +168,10 @@ export default function PortfolioChart({
       let base = null;
       for (const p of ov.series) {
         const c = Number(p?.close);
-        if (Number.isFinite(c) && c > 0) { base = c; break; }
+        if (Number.isFinite(c) && c > 0) {
+          base = c;
+          break;
+        }
       }
       if (!base) return;
 
@@ -146,15 +196,27 @@ export default function PortfolioChart({
 
   const ovColors = ["#60a5fa", "#34d399"]; // SPX, WIG20 itd.
 
+  // Desktop: zostaje jak było (prawa oś istnieje nawet bez overlay)
+  // Mobile: chowamy prawą oś, jeśli nie ma overlay -> więcej miejsca na wykres
+  const showRightAxis = !isMobile || (Array.isArray(overlays) && overlays.length > 0);
+
   return (
-    <div style={{ height }}>
+    <div style={{ height: effectiveHeight }}>
       {!hasData ? (
         <div className="h-full grid place-items-center text-sm text-zinc-400/70">
           Dodaj pozycję, aby zobaczyć wykres.
         </div>
       ) : (
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={mergedData} margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
+          <AreaChart
+            data={mergedData}
+            margin={{
+              top: isMobile ? 14 : 10,
+              right: isMobile ? 10 : 12,
+              left: isMobile ? 8 : 8,
+              bottom: isMobile ? 10 : 0,
+            }}
+          >
             <defs>
               <linearGradient id="portFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#facc15" stopOpacity={0.2} />
@@ -162,33 +224,41 @@ export default function PortfolioChart({
               </linearGradient>
             </defs>
 
-            <CartesianGrid stroke="rgba(255,255,255,0.06)" />
+            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
 
             <XAxis
               dataKey="t"
-              tick={{ fill: "#a1a1aa", fontSize: 12 }}
+              tick={{ fill: "#a1a1aa", fontSize: axisFont }}
               tickFormatter={(iso) => formatAxisTick(iso, longRange)}
-              minTickGap={22}
+              minTickGap={xMinTickGap}
+              tickLine={false}
+              axisLine={{ stroke: "rgba(255,255,255,0.10)" }}
             />
 
             {/* Oś PLN (lewa) */}
             <YAxis
               domain={[Math.max(0, min - head), max + head]}
-              tick={{ fill: "#a1a1aa", fontSize: 12 }}
-              tickFormatter={fmtPLN}
-              width={76}
+              tick={{ fill: "#a1a1aa", fontSize: axisFont }}
+              tickFormatter={yTickFormatter}
+              width={isMobile ? 48 : 76}
               yAxisId="left"
+              tickLine={false}
+              axisLine={{ stroke: "rgba(255,255,255,0.10)" }}
             />
 
             {/* Oś % (prawa) dla benchmarków */}
-            <YAxis
-              orientation="right"
-              yAxisId="right"
-              tick={{ fill: "#a1a1aa", fontSize: 12 }}
-              width={50}
-              tickFormatter={(v) => `${Number(v || 0).toFixed(0)}%`}
-              domain={["dataMin - 5", "dataMax + 5"]}
-            />
+            {showRightAxis && (
+              <YAxis
+                orientation="right"
+                yAxisId="right"
+                tick={{ fill: "#a1a1aa", fontSize: axisFont }}
+                width={isMobile ? 44 : 50}
+                tickFormatter={(v) => `${Number(v || 0).toFixed(0)}%`}
+                domain={["dataMin - 5", "dataMax + 5"]}
+                tickLine={false}
+                axisLine={{ stroke: "rgba(255,255,255,0.10)" }}
+              />
+            )}
 
             <Tooltip
               labelFormatter={(iso) => formatTooltipLabel(iso)}
@@ -199,11 +269,29 @@ export default function PortfolioChart({
                 return [fmtPLN(v), "Wartość portfela"];
               }}
               contentStyle={{
-                background: "rgba(24,24,27,0.95)",
-                border: "1px solid rgba(63,63,70,0.7)",
-                borderRadius: 10,
-                padding: "8px 10px",
+                background: "rgba(24,24,27,0.96)",
+                border: "1px solid rgba(63,63,70,0.75)",
+                borderRadius: 12,
+                padding: isMobile ? "10px 12px" : "8px 10px",
                 color: "#e4e4e7",
+                fontSize: isMobile ? 12 : 12,
+                lineHeight: 1.25,
+                maxWidth: isMobile ? 260 : 320,
+                whiteSpace: "normal",
+                wordBreak: "break-word",
+                boxShadow: "0 12px 35px rgba(0,0,0,0.55)",
+              }}
+              labelStyle={{
+                fontWeight: 700,
+                color: "#f9fafb",
+                marginBottom: 6,
+              }}
+              itemStyle={{
+                paddingTop: 2,
+                paddingBottom: 2,
+              }}
+              wrapperStyle={{
+                outline: "none",
               }}
             />
 
@@ -213,25 +301,27 @@ export default function PortfolioChart({
               yAxisId="left"
               type="monotone"
               stroke="#facc15"
-              strokeWidth={2}
+              strokeWidth={2.2}
               fill="url(#portFill)"
               dot={false}
+              isAnimationActive={false}
             />
 
             {/* BENCHMARKI */}
-            {overlays.map((ov, i) => (
-              <Line
-                key={ov?.key ?? `ov_${i}`}
-                type="monotone"
-                dataKey={`ov_${i}`}
-                yAxisId="right"
-                stroke={ov?.color || ovColors[i % ovColors.length]}
-                strokeWidth={1.8}
-                dot={false}
-                isAnimationActive={false}
-                connectNulls
-              />
-            ))}
+            {showRightAxis &&
+              overlays.map((ov, i) => (
+                <Line
+                  key={ov?.key ?? `ov_${i}`}
+                  type="monotone"
+                  dataKey={`ov_${i}`}
+                  yAxisId="right"
+                  stroke={ov?.color || ovColors[i % ovColors.length]}
+                  strokeWidth={1.8}
+                  dot={false}
+                  isAnimationActive={false}
+                  connectNulls
+                />
+              ))}
           </AreaChart>
         </ResponsiveContainer>
       )}

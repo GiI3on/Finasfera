@@ -34,6 +34,13 @@ header, nav, .topnav { background: transparent !important; }
 .card, .card-inner { position: relative; }
 .card-inner { overflow: visible; }
 
+/* === Cards: compact padding na mobile (tylko tam gdzie użyjesz klasy) === */
+.card-inner-compact { @apply p-3 sm:p-5; }
+
+/* === Helpers === */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* === KPI === */
 .kpi       { @apply rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-900/70 to-zinc-900/30 p-4; }
 .kpi-label { @apply text-[11px] uppercase tracking-wide text-zinc-400; }
@@ -114,4 +121,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     color: #ffffff;
     border: 1px solid #3f3f46;
   }
+}
+
+/* === FIX: Mobile Chart & Tap Highlights === */
+/* KROK 1: Usuwamy systemowe podświetlenie przy dotyku */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* KROK 2: Usuwamy ramkę z samej biblioteki wykresów (Recharts) */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-layer {
+  outline: none !important;
+}
+
+/* Opcjonalnie: usuwa outline z każdego klikniętego elementu (jeśli nie używasz klawiatury do nawigacji) */
+:focus:not(:focus-visible) {
+  outline: none;
 }

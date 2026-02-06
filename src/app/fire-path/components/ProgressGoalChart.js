@@ -26,6 +26,28 @@ const fmtPLNCompact = (v) =>
 
 const clamp = (n, a, b) => Math.min(Math.max(n, a), b);
 
+function useIsMobile(maxWidthPx = 640) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mq = window.matchMedia(`(max-width: ${maxWidthPx}px)`);
+    const update = () => setIsMobile(!!mq.matches);
+    update();
+
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, [maxWidthPx]);
+
+  return isMobile;
+}
+
 function readPlanFromLocal() {
   if (typeof window === "undefined") return null;
   for (const key of FIRE_CALC_KEYS) {
@@ -45,7 +67,10 @@ function goalFromPlan(plan) {
     Number(plan?.annualExpenses) ||
     Number(plan?.expenses) ||
     (Number(plan?.monthlyExpenses) ? Number(plan?.monthlyExpenses) * 12 : 0);
-  const goal = Math.max(0, Math.round((Number(annual) || 0) * (Number(mult) || 0)));
+  const goal = Math.max(
+    0,
+    Math.round((Number(annual) || 0) * (Number(mult) || 0))
+  );
   return Number.isFinite(goal) ? goal : 0;
 }
 
@@ -100,7 +125,8 @@ function toYMFromYears(y) {
   const years = Math.floor(y);
   const months = Math.round((y - years) * 12);
   if (years === 0) return `${months} mies.`;
-  if (months === 0) return `${years} ${years === 1 ? "rok" : years < 5 ? "lata" : "lat"}`;
+  if (months === 0)
+    return `${years} ${years === 1 ? "rok" : years < 5 ? "lata" : "lat"}`;
   return `${years} ${years === 1 ? "rok" : years < 5 ? "lata" : "lat"} i ${months} mies.`;
 }
 
@@ -111,14 +137,62 @@ export default function ProgressGoalChart({
   monthlyDeltaPct = 10,
   height = 340,
 }) {
+  const isMobile = useIsMobile(640);
+
   const [plan, setPlan] = useState(() => readPlanFromLocal());
   useEffect(() => {
     const onStorage = (e) => {
       if (FIRE_CALC_KEYS.includes(e.key)) setPlan(readPlanFromLocal());
     };
+    const onFocus = () => setPlan(readPlanFromLocal());
     window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", () => setPlan(readPlanFromLocal()));
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
+
+  // styl suwaka – tylko raz (nie sypie w konsoli)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("range-fire-style")) return;
+    const style = document.createElement("style");
+    style.id = "range-fire-style";
+    style.innerHTML = `
+      .range-fire {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, #27272a, #3f3f46);
+        outline: none;
+      }
+      .range-fire:hover { filter: brightness(1.05); }
+      .range-fire:focus { box-shadow: 0 0 0 3px rgba(250,204,21,0.25); }
+      .range-fire::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px; height: 16px;
+        border-radius: 9999px;
+        background: #facc15;
+        border: 2px solid #0a0a0a;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+        cursor: pointer;
+      }
+      .range-fire::-moz-range-thumb {
+        width: 16px; height: 16px;
+        border-radius: 9999px;
+        background: #facc15;
+        border: 2px solid #0a0a0a;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+        cursor: pointer;
+      }
+      .range-fire::-moz-range-track {
+        height: 6px; border-radius: 9999px; background: #3f3f46;
+      }
+    `;
+    document.head.appendChild(style);
   }, []);
 
   const initial = Number(plan?.initial) || 0;
@@ -141,15 +215,30 @@ export default function ProgressGoalChart({
   );
 
   const moreContrib = useMemo(
-    () => simulateSeries({ initial, monthly: monthly * (1 + monthlyDeltaPct / 100), rate, years }),
+    () =>
+      simulateSeries({
+        initial,
+        monthly: monthly * (1 + monthlyDeltaPct / 100),
+        rate,
+        years,
+      }),
     [initial, monthly, rate, years, monthlyDeltaPct]
   );
   const lessContrib = useMemo(
-    () => simulateSeries({ initial, monthly: monthly * (1 - monthlyDeltaPct / 100), rate, years }),
+    () =>
+      simulateSeries({
+        initial,
+        monthly: monthly * (1 - monthlyDeltaPct / 100),
+        rate,
+        years,
+      }),
     [initial, monthly, rate, years, monthlyDeltaPct]
   );
 
-  const xs = useMemo(() => Array.from({ length: baseSeries.length }, (_, i) => i), [baseSeries]);
+  const xs = useMemo(
+    () => Array.from({ length: baseSeries.length }, (_, i) => i),
+    [baseSeries]
+  );
 
   const [yearsInvested, setYearsInvested] = useState(0);
   useEffect(() => {
@@ -160,47 +249,69 @@ export default function ProgressGoalChart({
   const deltaAbs = (Number(currentValue) || 0) - expectedAt;
   const deltaPct = expectedAt > 0 ? (deltaAbs / expectedAt) * 100 : 0;
 
-  const width = 700;
-  const pad = 54;
+  // ===== KLUCZ: desktop bez zmian, mobile ma własny viewBox =====
+  const vbW = isMobile ? 420 : 700; // desktop = 700 (jak było)
+  const vbH = Math.max(240, Number(height) || 340);
+
+  const pad = isMobile ? 46 : 54;
+  const shiftX = isMobile ? 18 : 24;
+
+  const axisFont = isMobile ? 12 : 11;
+  const axisSmallFont = isMobile ? 11 : 11;
+
   const scaler = useMemo(
     () =>
       createScaler({
         xs,
-        ys: [...baseSeries, ...lowSeries, ...highSeries, ...moreContrib, ...lessContrib],
-        width,
-        height,
+        ys: [
+          ...baseSeries,
+          ...lowSeries,
+          ...highSeries,
+          ...moreContrib,
+          ...lessContrib,
+        ],
+        width: vbW,
+        height: vbH,
         pad,
-        shiftX: 24,
+        shiftX,
       }),
-    [xs, baseSeries, lowSeries, highSeries, moreContrib, lessContrib, width, height]
+    [xs, baseSeries, lowSeries, highSeries, moreContrib, lessContrib, vbW, vbH, pad, shiftX]
   );
 
   function pathFromSeries(series) {
     return series
-      .map((y, i) => `${i === 0 ? "M" : "L"} ${scaler.x(xs[i]).toFixed(1)} ${scaler.y(y).toFixed(1)}`)
+      .map(
+        (y, i) =>
+          `${i === 0 ? "M" : "L"} ${scaler.x(xs[i]).toFixed(1)} ${scaler
+            .y(y)
+            .toFixed(1)}`
+      )
       .join(" ");
   }
 
   function areaBetween(low, high) {
-    const up = high.map((y, i) => `L ${scaler.x(xs[i]).toFixed(1)} ${scaler.y(y).toFixed(1)}`);
-    const down = [...low]
-      .reverse()
-      .map((y, i) => {
-        const xi = xs.length - 1 - i;
-        return `L ${scaler.x(xs[xi]).toFixed(1)} ${scaler.y(y).toFixed(1)}`;
-      });
-    return `M ${scaler.x(xs[0]).toFixed(1)} ${scaler.y(high[0]).toFixed(1)} ${up.join(" ")} ${down.join(" ")} Z`;
+    const up = high.map(
+      (y, i) => `L ${scaler.x(xs[i]).toFixed(1)} ${scaler.y(y).toFixed(1)}`
+    );
+    const down = [...low].reverse().map((y, i) => {
+      const xi = xs.length - 1 - i;
+      return `L ${scaler.x(xs[xi]).toFixed(1)} ${scaler.y(y).toFixed(1)}`;
+    });
+    return `M ${scaler.x(xs[0]).toFixed(1)} ${scaler.y(high[0]).toFixed(
+      1
+    )} ${up.join(" ")} ${down.join(" ")} Z`;
   }
 
-  // ====== HOVER: poprawka przeliczenia do układu viewBox ======
+  // ====== HOVER (mouse + touch) ======
   const [hoverIdx, setHoverIdx] = useState(null);
   const svgRef = useRef(null);
 
-  function onMouseMove(e) {
+  function pickIdxFromClientX(clientX) {
     const rect = svgRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    // przelicz piksele ekranu -> jednostki SVG (viewBox)
-    const pxSvg = (e.clientX - rect.left) * (width / rect.width);
+    if (!rect) return null;
+
+    const pxSvg = (clientX - rect.left) * (vbW / rect.width);
+
     let best = 0;
     let bestDist = Infinity;
     xs.forEach((x, idx) => {
@@ -210,14 +321,26 @@ export default function ProgressGoalChart({
         best = idx;
       }
     });
-    setHoverIdx(best);
+    return best;
   }
+
+  function onMouseMove(e) {
+    const idx = pickIdxFromClientX(e.clientX);
+    if (idx == null) return;
+    setHoverIdx(idx);
+  }
+
+  function onTouchMove(e) {
+    const t = e.touches?.[0];
+    if (!t) return;
+    const idx = pickIdxFromClientX(t.clientX);
+    if (idx == null) return;
+    setHoverIdx(idx);
+  }
+
   function onLeave() {
     setHoverIdx(null);
   }
-
-  const hoverX = hoverIdx != null ? scaler.x(xs[hoverIdx]) : null;
-  const hoverY = hoverIdx != null ? scaler.y(baseSeries[hoverIdx]) : null;
 
   const xTicks = useMemo(() => {
     const arr = [];
@@ -232,20 +355,34 @@ export default function ProgressGoalChart({
     return levels;
   }, [scaler.maxY]);
 
-  const hitIndex = useMemo(() => firstHitIndex(baseSeries, goal), [baseSeries, goal]);
+  const hitIndex = useMemo(
+    () => firstHitIndex(baseSeries, goal),
+    [baseSeries, goal]
+  );
+
+  // tooltip format: desktop pełne kwoty (jak było), mobile kompaktowo (żeby się mieściło)
+  const fmtTooltip = isMobile ? fmtPLNCompact : fmtPLN;
 
   return (
     <div className="space-y-3">
       {/* nagłówek + legenda */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-zinc-300 font-medium">Cel postępu i wariancja</div>
+        <div className="text-sm text-zinc-300 font-medium">
+          Cel postępu i wariancja
+        </div>
         <div className="flex items-center gap-6 text-xs text-zinc-400">
           <span className="inline-flex items-center gap-2">
-            <span className="inline-block w-4 h-[3px] rounded-full" style={{ background: "#facc15" }} />
+            <span
+              className="inline-block w-4 h-[3px] rounded-full"
+              style={{ background: "#facc15" }}
+            />
             Różne stopy zwrotu (±{rateDeltaPct} pp)
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="inline-block w-4 h-[3px] rounded-full" style={{ background: "#a1a1aa" }} />
+            <span
+              className="inline-block w-4 h-[3px] rounded-full"
+              style={{ background: "#a1a1aa" }}
+            />
             Różne wpłaty (±{monthlyDeltaPct}%)
           </span>
         </div>
@@ -255,19 +392,28 @@ export default function ProgressGoalChart({
       <div className="relative">
         <svg
           ref={svgRef}
-          viewBox={`0 0 ${width} ${height}`}
+          viewBox={`0 0 ${vbW} ${vbH}`}
           className="w-full rounded-lg border border-zinc-800 bg-zinc-900/40"
           role="img"
           aria-label="Wykres planu i wariantów"
           onMouseMove={onMouseMove}
           onMouseLeave={onLeave}
+          onTouchStart={onTouchMove}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onLeave}
         >
           <defs>
             <clipPath id="progress-clip">
               <rect x={scaler.x0} y={scaler.y0} width={scaler.w} height={scaler.h} />
             </clipPath>
             <filter id="dot-halo" x="-50%" y="-50%" width="200%" height="200%">
-              <feDropShadow dx="0" dy="0" stdDeviation="1.3" floodColor="#000" floodOpacity="0.85" />
+              <feDropShadow
+                dx="0"
+                dy="0"
+                stdDeviation="1.3"
+                floodColor="#000"
+                floodOpacity="0.85"
+              />
             </filter>
           </defs>
 
@@ -275,19 +421,35 @@ export default function ProgressGoalChart({
           {yTicks.map((val, i) => {
             const y = scaler.y(val);
             const label = fmtPLNCompact(val);
-            const boxW = 50;
-            const boxH = 16;
+
+            const boxW = isMobile ? 58 : 50;
+            const boxH = isMobile ? 18 : 16;
             const tx = scaler.x0 - 12 - boxW;
             const ty = y - boxH / 2;
+
             return (
               <g key={i}>
-                <line x1={scaler.x0} x2={scaler.x0 + scaler.w} y1={y} y2={y} stroke="rgba(255,255,255,0.06)" />
-                <rect x={tx} y={ty} width={boxW} height={boxH} rx="3" ry="3" fill="rgba(10,10,10,0.9)" />
+                <line
+                  x1={scaler.x0}
+                  x2={scaler.x0 + scaler.w}
+                  y1={y}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.06)"
+                />
+                <rect
+                  x={tx}
+                  y={ty}
+                  width={boxW}
+                  height={boxH}
+                  rx="3"
+                  ry="3"
+                  fill="rgba(10,10,10,0.9)"
+                />
                 <text
                   x={scaler.x0 - 14}
                   y={y + 4}
                   textAnchor="end"
-                  fontSize="11"
+                  fontSize={axisSmallFont}
                   fill="#a1a1aa"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
@@ -302,8 +464,20 @@ export default function ProgressGoalChart({
             const x = scaler.x(yr);
             return (
               <g key={i}>
-                <line x1={x} x2={x} y1={scaler.y0} y2={scaler.y0 + scaler.h} stroke="rgba(255,255,255,0.04)" />
-                <text x={x} y={scaler.y0 + scaler.h + 16} textAnchor="middle" fontSize="11" fill="#71717a">
+                <line
+                  x1={x}
+                  x2={x}
+                  y1={scaler.y0}
+                  y2={scaler.y0 + scaler.h}
+                  stroke="rgba(255,255,255,0.04)"
+                />
+                <text
+                  x={x}
+                  y={scaler.y0 + scaler.h + 18}
+                  textAnchor="middle"
+                  fontSize={axisFont}
+                  fill="#71717a"
+                >
                   {yr}
                 </text>
               </g>
@@ -315,13 +489,46 @@ export default function ProgressGoalChart({
             <path d={areaBetween(lowSeries, highSeries)} fill="rgba(250,204,21,0.16)" />
 
             {/* linie stóp */}
-            <path d={pathFromSeries(lowSeries)} stroke="rgba(245,158,11,0.75)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <path d={pathFromSeries(highSeries)} stroke="rgba(245,158,11,0.75)" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            <path d={pathFromSeries(baseSeries)} stroke="#facc15" strokeWidth="3.0" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d={pathFromSeries(lowSeries)}
+              stroke="rgba(245,158,11,0.75)"
+              strokeWidth="2.2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={pathFromSeries(highSeries)}
+              stroke="rgba(245,158,11,0.75)"
+              strokeWidth="2.2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d={pathFromSeries(baseSeries)}
+              stroke="#facc15"
+              strokeWidth="3.0"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
 
             {/* przerywane: wpłaty */}
-            <path d={pathFromSeries(moreContrib)} stroke="rgba(161,161,170,0.95)" strokeWidth="1.7" strokeDasharray="6 4" fill="none" />
-            <path d={pathFromSeries(lessContrib)} stroke="rgba(161,161,170,0.95)" strokeWidth="1.7" strokeDasharray="6 4" fill="none" />
+            <path
+              d={pathFromSeries(moreContrib)}
+              stroke="rgba(161,161,170,0.95)"
+              strokeWidth="1.7"
+              strokeDasharray="6 4"
+              fill="none"
+            />
+            <path
+              d={pathFromSeries(lessContrib)}
+              stroke="rgba(161,161,170,0.95)"
+              strokeWidth="1.7"
+              strokeDasharray="6 4"
+              fill="none"
+            />
 
             {/* linia suwaka + kropka bazowa */}
             {Number.isFinite(yearsInvested) && yearsInvested >= 0 && yearsInvested <= years && (
@@ -335,37 +542,58 @@ export default function ProgressGoalChart({
                   strokeDasharray="4 4"
                 />
                 <g filter="url(#dot-halo)">
-                  <circle cx={scaler.x(yearsInvested)} cy={scaler.y(baseSeries[yearsInvested])} r="5.5" fill="#facc15" />
+                  <circle
+                    cx={scaler.x(yearsInvested)}
+                    cy={scaler.y(baseSeries[yearsInvested])}
+                    r="5.5"
+                    fill="#facc15"
+                  />
                 </g>
               </>
             )}
 
-            {/* JEDEN tooltip */}
+            {/* tooltip */}
             {hoverIdx != null && (() => {
-              const boxW = 240;
-              const boxH = 88;
-              const margin = 10;
-              const hoverX = scaler.x(xs[hoverIdx]);
-              const hoverY = scaler.y(baseSeries[hoverIdx]);
-              let tx = hoverX + margin;
-              let ty = hoverY - (boxH + margin);
-              if (tx + boxW > scaler.x0 + scaler.w - 2) tx = hoverX - boxW - margin;
-              if (ty < scaler.y0) ty = scaler.y0 + 4;
-              if (ty + boxH > scaler.y0 + scaler.h) ty = scaler.y0 + scaler.h - boxH - 4;
+const margin = 10;
+
+// szerokość tooltipa dopasowana do pola wykresu (żeby nie wychodził poza clipPath)
+const boxW = isMobile ? Math.min(260, Math.max(200, scaler.w - 12)) : 240;
+// trochę wyższy na mobile, bo mamy 5 linii tekstu
+const boxH = isMobile ? 96 : 88;
+
+const hx = scaler.x(xs[hoverIdx]);
+const hy = scaler.y(baseSeries[hoverIdx]);
+
+let tx = hx + margin;
+let ty = hy - (boxH + margin);
+
+// najpierw standardowe „przerzucanie” lewo/prawo i góra/dół
+if (tx + boxW > scaler.x0 + scaler.w - 2) tx = hx - boxW - margin;
+if (ty < scaler.y0) ty = scaler.y0 + 4;
+if (ty + boxH > scaler.y0 + scaler.h) ty = scaler.y0 + scaler.h - boxH - 4;
+
+// KLUCZ: dociskamy tooltip do środka pola wykresu, żeby clipPath go nie ucinał
+tx = clamp(tx, scaler.x0 + 4, scaler.x0 + scaler.w - boxW - 4);
+ty = clamp(ty, scaler.y0 + 4, scaler.y0 + scaler.h - boxH - 4);
+
+const small = isMobile ? 10 : 11;
+
 
               return (
                 <g>
-                  <circle cx={hoverX} cy={hoverY} r="4.8" fill="#facc15" />
+                  <circle cx={hx} cy={hy} r="4.8" fill="#facc15" />
                   <g transform={`translate(${tx}, ${ty})`}>
                     <rect rx="8" ry="8" width={boxW} height={boxH} fill="rgba(9,9,11,0.96)" stroke="#3f3f46" />
                     <text x="10" y="18" fontSize="12" fill="#e4e4e7">Rok: {hoverIdx}</text>
-                    <text x="10" y="36" fontSize="11" fill="#facc15">Plan: {fmtPLN(baseSeries[hoverIdx])}</text>
-                    <text x="10" y="52" fontSize="11" fill="#e4e4e7">Ty: {fmtPLN(currentValue)}</text>
-                    <text x="10" y="68" fontSize="11" fill="#a1a1aa">
-                      Zakres stóp: {fmtPLN(lowSeries[hoverIdx])} – {fmtPLN(highSeries[hoverIdx])}
+                    <text x="10" y="36" fontSize="11" fill="#facc15">Plan: {fmtTooltip(baseSeries[hoverIdx])}</text>
+                    <text x="10" y="52" fontSize="11" fill="#e4e4e7">Ty: {fmtTooltip(currentValue)}</text>
+
+                    {/* WRACAMY do formy jak było: 1 linia = 1 zakres */}
+                    <text x="10" y="68" fontSize={small} fill="#a1a1aa">
+                      Zakres stóp: {fmtTooltip(lowSeries[hoverIdx])} – {fmtTooltip(highSeries[hoverIdx])}
                     </text>
-                    <text x="10" y="84" fontSize="11" fill="#a1a1aa">
-                      Wpłaty ±{monthlyDeltaPct}%: {fmtPLN(lessContrib[hoverIdx])} – {fmtPLN(moreContrib[hoverIdx])}
+                    <text x="10" y="84" fontSize={small} fill="#a1a1aa">
+                      Wpłaty ±{monthlyDeltaPct}%: {fmtTooltip(lessContrib[hoverIdx])} – {fmtTooltip(moreContrib[hoverIdx])}
                     </text>
                   </g>
                 </g>
@@ -376,19 +604,19 @@ export default function ProgressGoalChart({
           {/* podpisy osi */}
           <text
             x={scaler.x0 + scaler.w / 2}
-            y={height - 6}
+            y={vbH - 6}
             textAnchor="middle"
-            fontSize="11"
+            fontSize={axisFont}
             fill="#71717a"
           >
             Lata
           </text>
           <text
             x={16}
-            y={height / 2}
-            transform={`rotate(-90,16,${height / 2})`}
+            y={vbH / 2}
+            transform={`rotate(-90,16,${vbH / 2})`}
             textAnchor="middle"
-            fontSize="11"
+            fontSize={axisFont}
             fill="#71717a"
           >
             Wartość portfela [PLN]
@@ -408,14 +636,22 @@ export default function ProgressGoalChart({
           onChange={(e) => setYearsInvested(Number(e.target.value))}
           className="range-fire flex-1"
         />
-        <div className="text-xs text-zinc-300 tabular w-10 text-right">{yearsInvested}</div>
+        <div className="text-xs text-zinc-300 tabular w-10 text-right">
+          {yearsInvested}
+        </div>
       </div>
 
       {/* kafle */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <CardKpi label={`Wariant niski (stopa -${rateDeltaPct} pp)`} value={fmtPLN(lowSeries.at(-1))} />
+        <CardKpi
+          label={`Wariant niski (stopa -${rateDeltaPct} pp)`}
+          value={fmtPLN(lowSeries.at(-1))}
+        />
         <CardKpi label={`Plan (koniec horyzontu)`} value={fmtPLN(baseSeries.at(-1))} />
-        <CardKpi label={`Wariant wysoki (stopa +${rateDeltaPct} pp)`} value={fmtPLN(highSeries.at(-1))} />
+        <CardKpi
+          label={`Wariant wysoki (stopa +${rateDeltaPct} pp)`}
+          value={fmtPLN(highSeries.at(-1))}
+        />
         <CardKpi label="Bieżący kapitał" value={fmtPLN(currentValue)} />
       </div>
 
@@ -434,52 +670,18 @@ export default function ProgressGoalChart({
         <b className="tabular">{yearsInvested}</b>{" "}
         {yearsInvested === 1 ? "roku" : yearsInvested < 5 ? "latach" : "latach"}.
         {goal > 0 && (
-          <> Cel: <b className="tabular">{fmtPLN(goal)}</b>{' '}
-            — <b>{Number.isFinite(hitIndex) ? toYMFromYears(hitIndex) : "nieosiągnięty w horyzoncie"}</b>.
+          <>
+            {" "}
+            Cel: <b className="tabular">{fmtPLN(goal)}</b> —{" "}
+            <b>
+              {Number.isFinite(hitIndex)
+                ? toYMFromYears(hitIndex)
+                : "nieosiągnięty w horyzoncie"}
+            </b>
+            .
           </>
         )}
       </div>
-
-      {/* styl suwaka */}
-      {typeof document !== "undefined" && !document.getElementById("range-fire-style") && (() => {
-        const style = document.createElement("style");
-        style.id = "range-fire-style";
-        style.innerHTML = `
-          .range-fire {
-            -webkit-appearance: none;
-            appearance: none;
-            height: 6px;
-            border-radius: 9999px;
-            background: linear-gradient(90deg, #27272a, #3f3f46);
-            outline: none;
-          }
-          .range-fire:hover { filter: brightness(1.05); }
-          .range-fire:focus { box-shadow: 0 0 0 3px rgba(250,204,21,0.25); }
-          .range-fire::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px; height: 16px;
-            border-radius: 9999px;
-            background: #facc15;
-            border: 2px solid #0a0a0a;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
-            cursor: pointer;
-          }
-          .range-fire::-moz-range-thumb {
-            width: 16px; height: 16px;
-            border-radius: 9999px;
-            background: #facc15;
-            border: 2px solid #0a0a0a;
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
-            cursor: pointer;
-          }
-          .range-fire::-moz-range-track {
-            height: 6px; border-radius: 9999px; background: #3f3f46;
-          }
-        `;
-        document.head.appendChild(style);
-        return null;
-      })()}
     </div>
   );
 }
@@ -489,7 +691,9 @@ function CardKpi({ label, value }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 flex flex-col">
       <div className="text-[11px] text-zinc-400 leading-tight">{label}</div>
-      <div className="mt-1 text-zinc-100 text-lg font-semibold tabular">{value}</div>
+      <div className="mt-1 text-zinc-100 text-lg font-semibold tabular">
+        {value}
+      </div>
     </div>
   );
 }

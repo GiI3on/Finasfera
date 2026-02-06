@@ -1,18 +1,34 @@
 "use client";
 
-import AuthGate from "../fire-path/AuthGate";
 import dynamic from "next/dynamic";
+import { useAuth } from "../components/AuthProvider";
+import DemoPortfolio from "../components/PortfolioDemo";
 
-// parasol: złapie export default albo nazwany
+// ekran prawdziwego portfela
 const PortfolioScreen = dynamic(
-  () => import("../components/PortfolioScreen").then(m => m.default ?? m.PortfolioScreen),
+  () =>
+    import("../components/PortfolioScreen").then(
+      (m) => m.default ?? m.PortfolioScreen
+    ),
   { ssr: false }
 );
 
 export default function Page() {
-  return (
-    <AuthGate>
-      <PortfolioScreen title="Mój Portfel" />
-    </AuthGate>
-  );
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-16">
+        <p className="text-center text-zinc-400">Ładowanie…</p>
+      </main>
+    );
+  }
+
+  // 🔓 NIEZALOGOWANY → widok DEMO
+  if (!user) {
+    return <DemoPortfolio />;
+  }
+
+  // 🔐 ZALOGOWANY → pełny ekran portfela
+  return <PortfolioScreen title="Śledzenie Akcji" />;
 }

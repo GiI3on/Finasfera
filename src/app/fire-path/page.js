@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import AuthGate from "./AuthGate";
 import usePortfolioValue from "../../lib/usePortfolioValue";
 import { getChecklist, setChecklist, listenChecklist } from "../../lib/firePathChecklist";
 import { listenPortfolios } from "../../lib/portfolios";
@@ -44,17 +43,39 @@ const FIRE_CALC_KEYS = [
   "calculator:fire",
 ];
 
+/* ===== DEMO wartości (tylko niezalogowany) ===== */
+const DEMO_PORTFOLIO_VALUE = 187421; // żeby "Razem" było ~200k
+const DEMO_EXTRA_CAPITAL = "13780";  // input "Dodatkowy kapitał" w demo
+
 /* ===== Page ===== */
 export default function FirePathPage() {
-  /* Auth – potrzebny uid do Firestore */
-  let auth = { user: null };
+  /* Auth */
+  let auth = { user: null, loading: false, signIn: null };
   try {
     auth = useAuth?.() || auth;
   } catch {}
-  const uid = auth?.user?.uid || null;
+  const { user, loading, signIn } = auth;
+  const uid = user?.uid || null;
+  const isDemo = !uid;
+
+  /* Loading skeleton */
+  if (loading) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 pb-24">
+        <div className="mt-16 space-y-4">
+          <div className="h-10 w-64 bg-zinc-800/60 rounded animate-pulse" />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="h-[380px] bg-zinc-900/40 border border-zinc-800 rounded animate-pulse" />
+            <div className="h-[380px] bg-zinc-900/40 border border-zinc-800 rounded animate-pulse" />
+          </div>
+          <div className="h-[420px] bg-zinc-900/40 border border-zinc-800 rounded animate-pulse" />
+        </div>
+      </main>
+    );
+  }
 
   /* ===== Odczyt planu z LS ===== */
-  const DEFAULT_ANNUAL_EXPENSES = 60000;
+  const DEFAULT_ANNUAL_EXPENSES = 60000; // -> 1 500 000 przy mnożniku 25
   const DEFAULT_MULTIPLIER = 25;
 
   function readPlanFromLocal() {
@@ -193,18 +214,17 @@ export default function FirePathPage() {
     return hideMainPortfolio ? named : ["", ...named];
   }, [portfolioOptions, hideMainPortfolio]);
 
-  const { value: portfolioValue, loading: loadingPortfolio } = usePortfolioValue(selectedScope, {
+  const { value: portfolioValueRaw, loading: loadingPortfolioRaw } = usePortfolioValue(selectedScope, {
     uid,
     portfolioIds: portfolioIdsForHook,
   });
 
-  /* Partner – tryb włącz/wyłącz (cel główny pozostaje na single; partner panel liczy oddzielnie) */
+  const portfolioValue = isDemo ? DEMO_PORTFOLIO_VALUE : Number(portfolioValueRaw);
+  const loadingPortfolio = isDemo ? false : loadingPortfolioRaw;
+
+  /* Partner – tryb włącz/wyłącz */
   const [partnerMode, setPartnerMode] = useState(false);
   const [partnerValue, setPartnerValue] = useState(0);
-  const [yourMonthlyInput, setYourMonthlyInput] = useState("");
-  const [partnerMonthlyInput, setPartnerMonthlyInput] = useState("");
-  const yourMonthly = useMemo(() => parseIntSafe(yourMonthlyInput, 0), [yourMonthlyInput]);
-  const partnerMonthly = useMemo(() => parseIntSafe(partnerMonthlyInput, 0), [partnerMonthlyInput]);
 
   /* ===== Checklista (Firestore + fallback do localStorage) ===== */
   const DEFAULT_LEVELS = [
@@ -366,12 +386,12 @@ export default function FirePathPage() {
     return all.length ? Math.round((all.filter((t) => t.done).length / all.length) * 100) : 0;
   })();
 
-  /* ===== Logika celu i postępu (główny donut = cel single; partner panel liczy własny) ===== */
+  /* ===== Logika celu i postępu ===== */
   const householdFactor = 1;
   const totalTarget = Math.max(1, Math.round(baseTarget * householdFactor));
 
-  // dodatkowy kapitał spoza portfelami (złoto, gotówka itd.) – w panelu po prawej
-  const [extraCapitalInput, setExtraCapitalInput] = useState("");
+  // dodatkowy kapitał spoza portfelami – demo ma domyślną wartość
+  const [extraCapitalInput, setExtraCapitalInput] = useState(() => (isDemo ? DEMO_EXTRA_CAPITAL : ""));
   const extraCapital = useMemo(() => parseIntSafe(extraCapitalInput, 0), [extraCapitalInput]);
 
   const totalValueRaw = partnerMode ? Number(portfolioValue) + Number(partnerValue) : Number(portfolioValue);
@@ -392,7 +412,7 @@ export default function FirePathPage() {
     ];
   }, [partnerMode, portfolioValue, partnerValue, extraCapital]);
 
-  const stages = [
+  const stagesTop = [
     { label: "Mini-FIRE", pct: 10 },
     { label: "Ćwierć drogi", pct: 25 },
     { label: "Półmetek", pct: 50 },
@@ -400,46 +420,7 @@ export default function FirePathPage() {
     { label: "3/4 drogi", pct: 75 },
     { label: "Pełne FIRE", pct: 100 },
   ];
-  const nextStage = stages.find((s) => totalValue < (s.pct / 100) * totalTarget);
-
-  /* ====== pomocnicza: projekcja m/m (jak w kalkulatorze) ====== */
-  function monthsToReach(amount) {
-    const p = plan || {};
-    let capital = Math.max(0, Number(totalValue) || 0);
-    let monthlyPay = Math.max(0, Number(p?.monthly) || 0);
-    const mRate = (Number(p?.rate) || 0) / 100 / 12;
-    const useNBP = !!p?.useNBPPath;
-    const customWage = (Number(p?.customWageGrowth) || 0) / 100;
-
-    if (!monthlyPay && capital < amount) return NaN;
-
-    const start = new Date();
-    const baseYear = start.getFullYear();
-    const baseMonth = start.getMonth();
-
-    for (let month = 0; month <= 1200; month++) {
-      if (capital >= amount) return month;
-
-      capital += monthlyPay;
-      capital *= 1 + mRate;
-
-      const currentYear = baseYear + Math.floor((baseMonth + month) / 12);
-      const annualInfl = useNBP && Array.isArray(nbpCpi) && nbpCpi.length
-        ? (Number(nbpCpi.find((r) => r?.year === currentYear)?.cpi) || 0) / 100
-        : customWage;
-      if (annualInfl) monthlyPay *= 1 + annualInfl / 12;
-    }
-    return NaN;
-  }
-
-  const toYM = (months) => {
-    if (!Number.isFinite(months) || months <= 0) return "—";
-    const y = Math.floor(months / 12);
-    const m = months % 12;
-    if (y === 0) return `${m} mies.`;
-    if (m === 0) return `${y} ${y === 1 ? "rok" : y < 5 ? "lata" : "lat"}`;
-    return `${y} ${y === 1 ? "rok" : y < 5 ? "lata" : "lat"} i ${m} mies.`;
-  };
+  const nextStage = stagesTop.find((s) => totalValue < (s.pct / 100) * totalTarget);
 
   /* === PUBLIKACJA METRYK DO localStorage -> użyje tego Forum === */
   useEffect(() => {
@@ -452,198 +433,224 @@ export default function FirePathPage() {
   }, [progress, overallPct]);
 
   return (
-    <AuthGate>
-      <main className="mx-auto max-w-7xl px-4 pb-16">
-        <h1 className="h1 text-center my-8">
-          Twoja ścieżka <span className="text-yellow-400">FIRE</span>
-        </h1>
-
-        <p className="text-sm text-zinc-400 text-center mb-6">
-          Twój cel bazowy to <b>{fmtPLN(baseTarget)}</b> (wydatki <u>roczne</u> × 25).
-          Jeśli korzystałeś z kalkulatora FIRE — używamy wartości stamtąd. Wspólny cel liczymy w panelu po prawej.
-        </p>
-
-        {/* GÓRA: Checklista | Postęp + Donut + Portfel */}
-        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch auto-rows-fr">
-          {/* Checklista */}
-          <div className="card h-full">
-            <div className="card-inner h-full flex flex-col">
-              <div className="flex items-center gap-3 mb-3">
-                <h2 className="h2">Checklist celów</h2>
-                <span className="ml-auto text-sm text-zinc-400">Łącznie: <b>{overallPct}%</b></span>
-              </div>
-
-              {uid && (
-                <div className="text-xs text-zinc-500 mb-2">
-                  {cloudReady ? "✅ Zsynchronizowano z chmurą" : "Synchronizacja…"}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                {levels.map((l) => (
-                  <button
-                    key={l.id}
-                    className={`px-3 py-1 rounded-md border text-sm ${
-                      activeTab === l.id ? "border-yellow-500 text-yellow-300" : "border-zinc-700 text-zinc-300"
-                    } hover:bg-zinc-800`}
-                    onClick={() => setActiveTab(l.id)}
-                    aria-pressed={activeTab === l.id}
-                  >
-                    {l.name}
-                  </button>
-                ))}
-              </div>
-
-              <div className="text-sm text-zinc-400 mb-1">Poziom: <b>{levelPct}%</b></div>
-              <Progress value={levelPct} />
-
-              {/* powiększone kafelki — gap-4 */}
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {currentLevel.tasks.map((t, idx) => (
-                  <TaskButton key={idx} done={t.done} label={String(t.text)} onToggle={() => toggleTask(currentLevel.id, idx)} />
-                ))}
+    <main className="mx-auto max-w-7xl px-4 pb-16">
+      {/* DEMO BAR */}
+      {!user && (
+        <div className="card mt-6">
+          <div className="card-inner flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="min-w-0">
+              <div className="text-sm text-zinc-200 font-semibold">Tryb demo</div>
+              <div className="text-xs text-zinc-400">
+                Po zalogowaniu automatycznie zobaczysz dane z Twojego konta i portfeli.
               </div>
             </div>
+            <button
+              className="btn-primary sm:ml-auto"
+              onClick={() => {
+                try { signIn?.(); } catch {}
+              }}
+            >
+              Zaloguj się
+            </button>
           </div>
+        </div>
+      )}
 
-          {/* Prawy panel: Donut + KPI */}
-          <div className="card h-full">
-            <div className="card-inner h-full flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-semibold text-zinc-100">Portfel i postęp</h3>
-                <label className="sr-only" htmlFor="scopeSelect">Zakres portfeli</label>
-                <select
-                  id="scopeSelect"
-                  className="input !py-1 !h-8 !w-auto max-w-[220px]"
-                  value={selectedScope}
-                  onChange={(e) => setSelectedScope(e.target.value)}
-                  title="Zakres, który wliczamy do wartości"
-                >
-                  {portfolioChoices.map((opt) => (
-                    <option key={opt.id || "main"} value={opt.id}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      <h1 className="h1 text-center my-8">
+        Twoja ścieżka <span className="text-yellow-400">FIRE</span>
+      </h1>
 
-              <div className="flex flex-col items-center gap-4 grow">
-                <div className="relative">
-                  <Donut total={totalTarget} slices={donutSlices} size={236} />
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="text-center leading-tight">
-                      <div className="text-xs text-zinc-400">Postęp</div>
-                      <div className="text-3xl font-semibold tabular text-zinc-100">{Math.round(progress)}%</div>
-                    </div>
-                  </div>
-                </div>
+      <p className="text-sm text-zinc-400 text-center mb-6">
+        Twój cel bazowy to <b>{fmtPLN(baseTarget)}</b> (wydatki <u>roczne</u> × 25).
+        Jeśli korzystałeś z kalkulatora FIRE — używamy wartości stamtąd. Wspólny cel liczymy w panelu po prawej.
+      </p>
 
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <Kpi label="Razem" value={loadingPortfolio ? "…" : fmtPLN(totalValue)} />
-                  <Kpi label="Cel" value={fmtPLN(totalTarget)} />
-                </div>
-
-                {/* Dodatkowy kapitał poza portfelami (wliczany do postępu) */}
-                <div className="w-full">
-                  <label className="text-xs text-zinc-400">Dodatkowy kapitał (poza portfelami)</label>
-                  <input
-                    className="input mt-1"
-                    value={extraCapitalInput}
-                    onChange={(e) => setExtraCapitalInput(e.target.value)}
-                    inputMode="numeric"
-                    placeholder="np. 50 000"
-                    title="Złoto, gotówka, obligacje itp. — doliczymy do bieżącej wartości"
-                  />
-                </div>
-              </div>
-
-              {nextStage && (
-                <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="text-zinc-300">
-                      Do etapu <b>{nextStage.label}</b> brakuje <b className="tabular">
-                        {fmtPLN((nextStage.pct / 100) * totalTarget - totalValue)}
-                      </b>
-                    </span>
-                    <span className="text-[11px] text-zinc-500 tabular">{Math.round(progress)}%</span>
-                  </div>
-                  <div className="mt-2 h-2 w-full bg-zinc-800 rounded overflow-hidden">
-                    <div
-                      className="h-full bg-yellow-500"
-                      style={{ width: `${clamp((totalValue / Math.max(1, (nextStage.pct / 100) * totalTarget)) * 100, 0, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="text-sm text-zinc-300">
-                Brakuje: <b className="tabular">{fmtPLN(missing)}</b>
-              </div>
+      {/* GÓRA: Checklista | Postęp + Donut + Portfel */}
+      {/* MOBILE FIX: auto-rows-fr tylko na XL */}
+      <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch xl:auto-rows-fr">
+        {/* Checklista */}
+        <div className="card xl:h-full">
+          <div className="card-inner flex flex-col xl:h-full">
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="h2">Checklist celów</h2>
+              <span className="ml-auto text-sm text-zinc-400">Łącznie: <b>{overallPct}%</b></span>
             </div>
-          </div>
-        </section>
 
-        {/* Etapy */}
-        <section className="card mt-8">
-          <div className="card-inner">
-            <h2 className="h2 mb-3">Etapy FIRE</h2>
-            <StagesTable
-              target={totalTarget}
-              current={totalValue}
-              monthlyPlan={plan}
-              nbpCpi={nbpCpi}
-            />
-            {plan?.useNBPPath && nbpError && (
-              <p className="mt-2 text-xs text-yellow-300">Brak danych CPI NBP — indeksacja wpłat może być niedokładna.</p>
+            {uid && (
+              <div className="text-xs text-zinc-500 mb-2">
+                {cloudReady ? "✅ Zsynchronizowano z chmurą" : "Synchronizacja…"}
+              </div>
             )}
-          </div>
-        </section>
 
-        {/* ====== ANALIZA + PARTNER — DWIE KOLUMNY ====== */}
-        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8 items-stretch auto-rows-fr">
-          {/* Lewa kolumna: wykres wariancji */}
-          <div className="card h-full">
-            <div className="card-inner h-full flex flex-col">
-              <h2 className="h2 mb-3">Cel postępu i wariancja</h2>
-              <div className="grow min-h-[340px]">
-                <ProgressGoalChart
-                  currentValue={totalValue}
-                  rateDeltaPct={2}
-                  monthlyDeltaPct={10}
-                  height={300}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {levels.map((l) => (
+                <button
+                  key={l.id}
+                  className={`px-3 py-1 rounded-md border text-sm ${
+                    activeTab === l.id ? "border-yellow-500 text-yellow-300" : "border-zinc-700 text-zinc-300"
+                  } hover:bg-zinc-800`}
+                  onClick={() => setActiveTab(l.id)}
+                  aria-pressed={activeTab === l.id}
+                >
+                  {l.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="text-sm text-zinc-400 mb-1">Poziom: <b>{levelPct}%</b></div>
+            <Progress value={levelPct} />
+
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {currentLevel.tasks.map((t, idx) => (
+                <TaskButton
+                  key={idx}
+                  done={t.done}
+                  label={String(t.text)}
+                  onToggle={() => toggleTask(currentLevel.id, idx)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Prawy panel: Donut + KPI */}
+        <div className="card xl:h-full">
+          <div className="card-inner flex flex-col gap-4 xl:h-full">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-semibold text-zinc-100">Portfel i postęp</h3>
+              <label className="sr-only" htmlFor="scopeSelect">Zakres portfeli</label>
+              <select
+                id="scopeSelect"
+                className="input !py-1 !h-8 !w-auto max-w-[220px]"
+                value={selectedScope}
+                onChange={(e) => setSelectedScope(e.target.value)}
+                title="Zakres, który wliczamy do wartości"
+              >
+                {portfolioChoices.map((opt) => (
+                  <option key={opt.id || "main"} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* MOBILE FIX: grow tylko na XL (na telefonie nie wypycha pustej przestrzeni) */}
+            <div className="flex flex-col items-center gap-4 xl:grow">
+              <div className="relative">
+                <Donut total={totalTarget} slices={donutSlices} size={236} />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center leading-tight">
+                    <div className="text-xs text-zinc-400">Postęp</div>
+                    <div className="text-3xl font-semibold tabular text-zinc-100">{Math.round(progress)}%</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <Kpi label="Razem" value={loadingPortfolio ? "…" : fmtPLN(totalValue)} />
+                <Kpi label="Cel" value={fmtPLN(totalTarget)} />
+              </div>
+
+              <div className="w-full">
+                <label className="text-xs text-zinc-400">Dodatkowy kapitał (poza portfelami)</label>
+                <input
+                  className="input mt-1"
+                  value={extraCapitalInput}
+                  onChange={(e) => setExtraCapitalInput(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="np. 50 000"
+                  title="Złoto, gotówka, obligacje itp. — doliczymy do bieżącej wartości"
                 />
               </div>
             </div>
-          </div>
 
-          {/* Prawa kolumna: FIRE z partnerem */}
-          <div className="card h-full">
-            <div className="card-inner h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="h2">FIRE z partnerem</h2>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-yellow-400"
-                    checked={partnerMode}
-                    onChange={(e) => setPartnerMode(e.target.checked)}
+            {nextStage && (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-zinc-300">
+                    Do etapu <b>{nextStage.label}</b> brakuje{" "}
+                    <b className="tabular">
+                      {fmtPLN((nextStage.pct / 100) * totalTarget - totalValue)}
+                    </b>
+                  </span>
+                  <span className="text-[11px] text-zinc-500 tabular">{Math.round(progress)}%</span>
+                </div>
+                <div className="mt-2 h-2 w-full bg-zinc-800 rounded overflow-hidden">
+                  <div
+                    className="h-full bg-yellow-500"
+                    style={{
+                      width: `${clamp(
+                        (totalValue / Math.max(1, (nextStage.pct / 100) * totalTarget)) * 100,
+                        0,
+                        100
+                      )}%`,
+                    }}
                   />
-                  <span className="text-zinc-300">Włącz</span>
-                </label>
+                </div>
               </div>
+            )}
 
-              <div className="grow">
-                <PartnerFirePanel
-                  baseTargetSingle={baseTarget}
-                  currentCombinedValue={totalValue}
-                  nbpCpi={nbpCpi}
-                />
-              </div>
+            <div className="text-sm text-zinc-300">
+              Brakuje: <b className="tabular">{fmtPLN(missing)}</b>
             </div>
           </div>
-        </section>
-      </main>
-    </AuthGate>
+        </div>
+      </section>
+
+      {/* Etapy */}
+      <section className="card mt-8">
+        <div className="card-inner">
+          <h2 className="h2 mb-3">Etapy FIRE</h2>
+          <StagesTable target={totalTarget} current={totalValue} monthlyPlan={plan} nbpCpi={nbpCpi} />
+          {plan?.useNBPPath && nbpError && (
+            <p className="mt-2 text-xs text-yellow-300">Brak danych CPI NBP — indeksacja wpłat może być niedokładna.</p>
+          )}
+        </div>
+      </section>
+
+      {/* ====== ANALIZA + PARTNER — DWIE KOLUMNY ====== */}
+      {/* MOBILE FIX: auto-rows-fr tylko na XL */}
+      <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8 items-stretch xl:auto-rows-fr">
+        {/* Lewa kolumna: wykres wariancji */}
+        <div className="card xl:h-full">
+          <div className="card-inner flex flex-col xl:h-full">
+            <h2 className="h2 mb-3">Cel postępu i wariancja</h2>
+
+            {/* MOBILE FIX: mniejszy min-h na telefonie + grow tylko na XL */}
+            <div className="min-h-[260px] sm:min-h-[340px] xl:grow">
+              <ProgressGoalChart
+                currentValue={totalValue}
+                rateDeltaPct={2}
+                monthlyDeltaPct={10}
+                height={300}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Prawa kolumna: FIRE z partnerem */}
+        <div className="card xl:h-full">
+          <div className="card-inner flex flex-col xl:h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="h2">FIRE z partnerem</h2>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-yellow-400"
+                  checked={partnerMode}
+                  onChange={(e) => setPartnerMode(e.target.checked)}
+                />
+                <span className="text-zinc-300">Włącz</span>
+              </label>
+            </div>
+
+            <div className="xl:grow">
+              <PartnerFirePanel baseTargetSingle={baseTarget} currentCombinedValue={totalValue} nbpCpi={nbpCpi} />
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
 
@@ -689,7 +696,7 @@ function Donut({ total, slices, size = 200 }) {
   return (
     <div className="flex flex-col items-center min-w-0">
       <svg width={size} height={size} viewBox={"0 0 " + size + " " + size} role="img" aria-label="Udział wartości">
-        <g transform={"rotate(-90 " + (size / 2) + " " + (size / 2) + ")"} >
+        <g transform={"rotate(-90 " + (size / 2) + " " + (size / 2) + ")"}>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={strokeWidth} />
           {slices.map((s, i) => {
             const frac = clamp(total > 0 ? s.value / total : 0, 0, 1);
@@ -728,8 +735,13 @@ function Donut({ total, slices, size = 200 }) {
 /* ===== Etapy – zgodne z kalkulatorem ===== */
 function StagesTable({ target, current, monthlyPlan, nbpCpi }) {
   const fmt = (v) =>
-    new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN", maximumFractionDigits: 0 })
-      .format(Math.round(v || 0));
+    new Intl.NumberFormat("pl-PL", {
+      style: "currency",
+      currency: "PLN",
+      maximumFractionDigits: 0,
+    }).format(Math.round(v || 0));
+
+  const clampLocal = (n, a, b) => Math.min(Math.max(n, a), b);
 
   const toYM = (months) => {
     if (!Number.isFinite(months) || months <= 0) return "—";
@@ -761,9 +773,11 @@ function StagesTable({ target, current, monthlyPlan, nbpCpi }) {
       capital *= 1 + mRate;
 
       const currentYear = baseYear + Math.floor((baseMonth + month) / 12);
-      const annualInfl = useNBP && Array.isArray(nbpCpi) && nbpCpi.length
-        ? (Number(nbpCpi.find((r) => r?.year === currentYear)?.cpi) || 0) / 100
-        : customWage;
+      const annualInfl =
+        useNBP && Array.isArray(nbpCpi) && nbpCpi.length
+          ? (Number(nbpCpi.find((r) => r?.year === currentYear)?.cpi) || 0) / 100
+          : customWage;
+
       if (annualInfl) monthlyPay *= 1 + annualInfl / 12;
     }
     return NaN;
@@ -787,66 +801,133 @@ function StagesTable({ target, current, monthlyPlan, nbpCpi }) {
     { label: "Pełne FIRE", pct: 100 },
   ];
 
+  const rows = stages.map((s) => {
+    const amount = (s.pct / 100) * (target || 0);
+    const done = current || 0;
+    const gap = Math.max(0, amount - done);
+
+    let monthsProj = NaN;
+    try {
+      monthsProj = monthsToReach(amount);
+    } catch {}
+    if (!Number.isFinite(monthsProj)) monthsProj = monthsLinear(gap);
+
+    const pctDone = clampLocal((done / Math.max(1, amount)) * 100, 0, 100);
+    const eta = gap === 0 ? "—" : toYM(Math.max(0, Math.ceil(monthsProj)));
+
+    return { ...s, amount, done, gap, pctDone, eta };
+  });
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-zinc-400">
-            <th className="pb-2 font-normal">Etap</th>
-            <th className="pb-2 font-normal">% celu</th>
-            <th className="pb-2 font-normal">Kwota</th>
-            <th className="pb-2 font-normal">Ile brakuje</th>
-            <th className="pb-2 font-normal">Za ile mies.</th>
-            <th className="pb-2 font-normal w-[260px]">Postęp</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stages.map((s, i) => {
-            const amount = (s.pct / 100) * (target || 0);
-            const done = current || 0;
-            const gap = Math.max(0, amount - done);
+    <div>
+      {/* ===== MOBILE (kafelki) ===== */}
+      <div className="sm:hidden space-y-3">
+        {rows.map((r, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-base font-semibold text-zinc-100 truncate">
+                  {r.label}
+                </div>
+                <div className="mt-0.5 text-[11px] text-zinc-400">
+                  {r.pct}% celu • <span className="tabular">{fmt(r.amount)}</span>
+                </div>
+              </div>
 
-            let monthsProj = NaN;
-            try { monthsProj = monthsToReach(amount); } catch {}
-            if (!Number.isFinite(monthsProj)) monthsProj = monthsLinear(gap);
+              <div className="text-right shrink-0">
+                {r.gap === 0 ? (
+                  <div className="text-[11px] text-emerald-300 whitespace-nowrap">
+                    Osiągnięto ✓
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-[11px] text-zinc-400">Brakuje</div>
+                    <div className="text-sm font-semibold text-zinc-100 tabular whitespace-nowrap">
+                      {fmt(r.gap)}
+                    </div>
+                    {/* ✅ TYLKO RAZ pokazujemy ETA */}
+                    <div className="mt-1 text-[11px] text-zinc-500 whitespace-nowrap">
+                      Za {r.eta}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
 
-            const pctDone = clamp((done / Math.max(1, amount)) * 100, 0, 100);
+            <div className="mt-3 h-2 w-full bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-yellow-500"
+                style={{ width: `${r.pctDone}%` }}
+              />
+            </div>
 
-            return (
+            <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-500">
+              <span>Postęp: <span className="tabular">{Math.round(r.pctDone)}%</span></span>
+              <span className="tabular">{r.gap === 0 ? "—" : fmt(r.amount)}</span>
+            </div>
+          </div>
+        ))}
+
+        <p className="mt-2 text-[11px] text-zinc-500">
+          „Za ile miesięcy” liczone projekcją m/m jak w kalkulatorze (CPI NBP lub własny %).
+        </p>
+      </div>
+
+      {/* ===== DESKTOP (tabela jak było) ===== */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-zinc-400">
+              <th className="pb-2 font-normal">Etap</th>
+              <th className="pb-2 font-normal">% celu</th>
+              <th className="pb-2 font-normal">Kwota</th>
+              <th className="pb-2 font-normal">Ile brakuje</th>
+              <th className="pb-2 font-normal">Za ile mies.</th>
+              <th className="pb-2 font-normal w-[260px]">Postęp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
               <tr key={i} className="border-t border-zinc-800 align-middle">
-                <td className="py-2">{s.label}</td>
-                <td className="tabular">{s.pct}%</td>
-                <td className="tabular">{fmt(amount)}</td>
-                <td className="tabular">{gap === 0 ? "Osiągnięto" : fmt(gap)}</td>
-                <td className="tabular">{gap === 0 ? "—" : toYM(Math.max(0, Math.ceil(monthsProj)))}</td>
+                <td className="py-2">{r.label}</td>
+                <td className="tabular">{r.pct}%</td>
+                <td className="tabular">{fmt(r.amount)}</td>
+                <td className="tabular">{r.gap === 0 ? "Osiągnięto" : fmt(r.gap)}</td>
+                <td className="tabular">{r.gap === 0 ? "—" : r.eta}</td>
                 <td className="py-2">
                   <div className="group relative">
                     <div className="h-2 w-full bg-zinc-800 rounded overflow-hidden">
                       <div
                         className="h-full bg-yellow-500 transition-all duration-300 group-hover:brightness-110"
-                        style={{ width: `${pctDone}%` }}
+                        style={{ width: `${r.pctDone}%` }}
                       />
                     </div>
-                    {gap > 0 && (
+                    {r.gap > 0 && (
                       <div className="pointer-events-none absolute -top-7 right-0 hidden group-hover:block">
                         <div className="px-2 py-[2px] text-[11px] rounded-md border border-zinc-700 bg-zinc-900 text-zinc-200 shadow">
-                          Brakuje {fmt(gap)}
+                          Brakuje {fmt(r.gap)}
                         </div>
                       </div>
                     )}
                   </div>
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <p className="mt-3 text-xs text-zinc-400">„Za ile miesięcy” liczone projekcją m/m jak w kalkulatorze (CPI NBP lub własny %).</p>
+            ))}
+          </tbody>
+        </table>
+
+        <p className="mt-3 text-xs text-zinc-400">
+          „Za ile miesięcy” liczone projekcją m/m jak w kalkulatorze (CPI NBP lub własny %).
+        </p>
+      </div>
     </div>
   );
 }
 
-/* ===== Pigułka z zadaniem (powiększona) ===== */
+/* ===== Pigułka z zadaniem ===== */
 function TaskButton({ done, label, onToggle }) {
   return (
     <button
