@@ -47,6 +47,29 @@ const FIRE_CALC_KEYS = [
 const DEMO_PORTFOLIO_VALUE = 187421; // żeby "Razem" było ~200k
 const DEMO_EXTRA_CAPITAL = "13780";  // input "Dodatkowy kapitał" w demo
 
+/* ===== DEMO checklista (startowe "odhaczenia") ===== */
+const DEMO_DONE_BY_LEVEL = {
+  basic: [0, 1, 2, 3, 5],      // Podstawy: 5 zadań
+  steady: [0, 1, 3],          // Stabilizacja: 3
+  invest: [0, 6],             // Inwestowanie: 2
+  lifestyle: [0, 2],          // Styl życia: 2
+  extreme: [0],               // Ekstremalne: 1
+};
+
+function applyDemoPreset(levels) {
+  const preset = DEMO_DONE_BY_LEVEL || {};
+  return (levels || []).map((l) => {
+    const set = new Set(preset[l.id] || []);
+    return {
+      ...l,
+      tasks: (l.tasks || []).map((t, i) => ({
+        ...t,
+        done: set.has(i),
+      })),
+    };
+  });
+}
+
 /* ===== Page ===== */
 export default function FirePathPage() {
   /* Auth */
@@ -315,7 +338,7 @@ export default function FirePathPage() {
   }));
   const STORAGE_KEY = "fire-path:checklist:v2";
 
-  const [levels, setLevels] = useState(CANON);
+  const [levels, setLevels] = useState(() => (isDemo ? applyDemoPreset(CANON) : CANON));
   const [activeTab, setActiveTab] = useState("basic");
   const [cloudReady, setCloudReady] = useState(false);
 
@@ -696,7 +719,7 @@ function Donut({ total, slices, size = 200 }) {
   return (
     <div className="flex flex-col items-center min-w-0">
       <svg width={size} height={size} viewBox={"0 0 " + size + " " + size} role="img" aria-label="Udział wartości">
-        <g transform={"rotate(-90 " + (size / 2) + " " + (size / 2) + ")"}>
+        <g transform={"rotate(-90 " + (size / 2) + " " + (size / 2) + ")"}> 
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={strokeWidth} />
           {slices.map((s, i) => {
             const frac = clamp(total > 0 ? s.value / total : 0, 0, 1);

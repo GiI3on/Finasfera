@@ -33,14 +33,47 @@ const DEMO_TOTAL_VALUE = 22336.36; // suma wartości wszystkich spółek
 const DEMO_DAY_PROFIT = 210.55; // przykładowy dzienny zysk
 const DEMO_TOTAL_GAIN = 3066.32; // łączny zysk w PLN
 
-/* ====== WYKRES: jak może rosnąć portfel w czasie ====== */
+/* ====== WYKRES: jak może rosnąć portfel w czasie ======
+   ✅ Bardziej „falujący” jak na Twoim rysunku (wzrost + korekty).
+   Uwaga: XAxis używa teraz klucza "t" (YYYY-MM) żeby mieć więcej punktów.
+*/
 
 const DEMO_CHART = [
-  { year: "2021", value: 6000 },
-  { year: "2022", value: 9000 },
-  { year: "2023", value: 12000 },
-  { year: "2024", value: 18000 },
-  { year: "2025", value: DEMO_TOTAL_VALUE },
+  { t: "2021-01", value: 6000 },
+  { t: "2021-03", value: 7200 },
+  { t: "2021-05", value: 8200 },
+  { t: "2021-07", value: 7800 },
+  { t: "2021-09", value: 9200 },
+  { t: "2021-11", value: 8800 },
+
+  { t: "2022-01", value: 9500 },
+  { t: "2022-03", value: 10300 },
+  { t: "2022-05", value: 11000 },
+  { t: "2022-07", value: 9800 }, // korekta
+  { t: "2022-09", value: 10800 },
+  { t: "2022-11", value: 11600 },
+
+  { t: "2023-01", value: 12000 },
+  { t: "2023-03", value: 12800 },
+  { t: "2023-05", value: 12300 }, // korekta
+  { t: "2023-07", value: 13400 },
+  { t: "2023-09", value: 12900 }, // korekta
+  { t: "2023-11", value: 14500 },
+
+  { t: "2024-01", value: 15000 },
+  { t: "2024-03", value: 16200 },
+  { t: "2024-05", value: 17600 },
+  { t: "2024-07", value: 16800 }, // korekta
+  { t: "2024-09", value: 18600 },
+  { t: "2024-11", value: 17800 }, // korekta
+
+  { t: "2025-01", value: 19500 },
+  { t: "2025-03", value: 20500 },
+  { t: "2025-05", value: 19800 }, // korekta
+  { t: "2025-07", value: 21200 },
+  { t: "2025-09", value: 20650 }, // korekta
+  { t: "2025-11", value: 21850 },
+  { t: "2025-12", value: DEMO_TOTAL_VALUE },
 ];
 
 /* ====== GRUPY DEMO POD `PortfolioTable` ======
@@ -118,9 +151,9 @@ const DEMO_GROUPS = [
     pair: { yahoo: "KRU.WA" },
     totalShares: 6,
     avgBuy: 449.33,
-    price: 463.40,
-    value: 2780.40,
-    gain: 84.40,
+    price: 463.4,
+    value: 2780.4,
+    gain: 84.4,
     gainPct: 3.13,
     lots: [
       {
@@ -139,7 +172,7 @@ const DEMO_GROUPS = [
     pair: { yahoo: "ISAC.L" },
     totalShares: 6,
     avgBuy: 348.07,
-    price: 385.80,
+    price: 385.8,
     value: 2314.81,
     gain: 126.42,
     gainPct: 10.84,
@@ -204,7 +237,7 @@ export default function DemoPortfolio() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-24">
-      {/* NAGŁÓWEK + CTA DO LOGOWANIA (przeniesione tutaj, żeby był od razu widoczny) */}
+      {/* NAGŁÓWEK + CTA DO LOGOWANIA */}
       <section className="text-center mt-8 mb-6">
         <h1 className="h1">Śledzenie Akcji — portfel demo</h1>
         <p className="muted text-sm max-w-xl mx-auto">
@@ -220,37 +253,35 @@ export default function DemoPortfolio() {
         </button>
       </section>
 
-      {/* KPI NA GÓRZE */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      {/* KPI NA GÓRZE (✅ mniejsze kafelki na telefonie) */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="card">
-          <div className="card-inner">
-            <div className="muted text-sm">Wartość portfela (demo)</div>
-            <div className="text-3xl font-semibold tabular-nums">
+          <div className="card-inner !p-4 sm:!p-6">
+            <div className="muted text-xs sm:text-sm">Wartość portfela (demo)</div>
+            <div className="text-2xl sm:text-3xl font-semibold tabular-nums leading-tight">
               {fmtPLN(DEMO_TOTAL_VALUE)}
             </div>
           </div>
         </div>
 
         <div className="card">
-          <div className="card-inner">
-            <div className="muted text-sm">Dzienny wynik (demo)</div>
-            <div className="text-3xl font-semibold tabular-nums">
+          <div className="card-inner !p-4 sm:!p-6">
+            <div className="muted text-xs sm:text-sm">Dzienny wynik (demo)</div>
+            <div className="text-2xl sm:text-3xl font-semibold tabular-nums leading-tight">
               {fmtPLN(DEMO_DAY_PROFIT)}
             </div>
           </div>
         </div>
 
         <div className="card">
-          <div className="card-inner">
-            <div className="muted text-sm">Całkowity zysk (demo)</div>
-            <div className="text-3xl font-semibold tabular-nums text-emerald-400">
+          <div className="card-inner !p-4 sm:!p-6">
+            <div className="muted text-xs sm:text-sm">Całkowity zysk (demo)</div>
+            <div className="text-2xl sm:text-3xl font-semibold tabular-nums text-emerald-400 leading-tight">
               {fmtPLN(DEMO_TOTAL_GAIN)}
             </div>
-            <div className="text-xs text-emerald-400/80 tabular-nums">
+            <div className="text-[11px] sm:text-xs text-emerald-400/80 tabular-nums leading-tight">
               {fmtPct(
-                (DEMO_TOTAL_GAIN /
-                  (DEMO_TOTAL_VALUE - DEMO_TOTAL_GAIN)) *
-                  100
+                (DEMO_TOTAL_GAIN / (DEMO_TOTAL_VALUE - DEMO_TOTAL_GAIN)) * 100
               )}
             </div>
           </div>
@@ -269,43 +300,26 @@ export default function DemoPortfolio() {
                 margin={{ top: 16, right: 16, left: 0, bottom: 4 }}
               >
                 <defs>
-                  <linearGradient
-                    id="demoPortfelFill"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor="#facc15"
-                      stopOpacity={0.28}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor="#facc15"
-                      stopOpacity={0.04}
-                    />
+                  <linearGradient id="demoPortfelFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#facc15" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#facc15" stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
 
-                <CartesianGrid
-                  stroke="rgba(255,255,255,0.06)"
-                  vertical={false}
-                />
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
 
                 <XAxis
-                  dataKey="year"
+                  dataKey="t"
                   tick={{ fill: "#a1a1aa", fontSize: 11 }}
                   tickLine={false}
                   axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
+                  tickFormatter={(v) => String(v || "").slice(0, 4)}
+                  minTickGap={28}
                 />
 
                 <YAxis
                   tick={{ fill: "#a1a1aa", fontSize: 11 }}
-                  tickFormatter={(v) =>
-                    fmtPLN(v).replace(",00 zł", " zł")
-                  }
+                  tickFormatter={(v) => fmtPLN(v).replace(",00 zł", " zł")}
                   tickLine={false}
                   axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
                   width={80}
@@ -313,6 +327,7 @@ export default function DemoPortfolio() {
 
                 <Tooltip
                   formatter={(v) => fmtPLN(v)}
+                  labelFormatter={(label) => `Okres: ${String(label)}`}
                   contentStyle={{
                     background: "rgba(24,24,27,0.96)",
                     border: "1px solid rgba(63,63,70,0.8)",
@@ -331,12 +346,7 @@ export default function DemoPortfolio() {
                   stroke="#facc15"
                   strokeWidth={2.4}
                   fill="url(#demoPortfelFill)"
-                  dot={{
-                    r: 3,
-                    strokeWidth: 1.5,
-                    stroke: "#0f172a",
-                    fill: "#facc15",
-                  }}
+                  dot={false}
                   activeDot={{
                     r: 4.5,
                     strokeWidth: 2,
@@ -359,7 +369,7 @@ export default function DemoPortfolio() {
         </div>
       </section>
 
-      {/* TABELA POZYCJI DEMO – ten sam komponent co po zalogowaniu */}
+      {/* TABELA POZYCJI DEMO */}
       <section className="card">
         <div className="card-inner">
           <h2 className="h2 mb-2">Skład portfela (demo)</h2>
@@ -377,7 +387,6 @@ export default function DemoPortfolio() {
               next.has(key) ? next.delete(key) : next.add(key);
               setExpanded(next);
             }}
-            // w trybie demo nie cofamy transakcji – no-op
             onOpenFix={() => {}}
           />
 
@@ -385,9 +394,7 @@ export default function DemoPortfolio() {
             Łączna wartość portfela demo to około {fmtPLN(DEMO_TOTAL_VALUE)}, z
             czego {fmtPLN(DEMO_TOTAL_GAIN)} to zysk (ok.{" "}
             {fmtPct(
-              (DEMO_TOTAL_GAIN /
-                (DEMO_TOTAL_VALUE - DEMO_TOTAL_GAIN)) *
-                100
+              (DEMO_TOTAL_GAIN / (DEMO_TOTAL_VALUE - DEMO_TOTAL_GAIN)) * 100
             )}
             ). Dane służą wyłącznie celom edukacyjnym.
           </p>

@@ -42,20 +42,32 @@ function isMapLike(x) {
   return x && typeof x.get === "function";
 }
 
-/* ✅ wykrycie mobile (pointer coarse) */
+/* ✅ wykrycie mobile (pointer coarse) + fallback na touch */
 function useCoarsePointer() {
   const [coarse, setCoarse] = useState(false);
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(pointer: coarse)");
-    const update = () => setCoarse(!!mq.matches);
-    update();
-    if (mq.addEventListener) mq.addEventListener("change", update);
-    else mq.addListener(update);
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", update);
-      else mq.removeListener(update);
+    if (typeof window === "undefined") return;
+
+    const hasTouch =
+      typeof navigator !== "undefined" && (navigator.maxTouchPoints || 0) > 0;
+
+    const mq = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
+
+    const update = () => {
+      const mqCoarse = mq ? !!mq.matches : false;
+      setCoarse(mqCoarse || hasTouch);
     };
+
+    update();
+
+    if (mq) {
+      if (mq.addEventListener) mq.addEventListener("change", update);
+      else mq.addListener(update);
+      return () => {
+        if (mq.removeEventListener) mq.removeEventListener("change", update);
+        else mq.removeListener(update);
+      };
+    }
   }, []);
   return coarse;
 }
@@ -150,7 +162,7 @@ export default function MonthlyPnLBarChart({
 }) {
   const isCoarse = useCoarsePointer();
 
-  // ✅ mobile: tap = przypnij tooltip, drugi tap = zamknij
+  // ✅ mobile: tap = przypnij tooltip, tap inny słupek = przełącz, tap tło = zamknij
   const [pinned, setPinned] = useState(null); // {label, payload}
 
   const PRESETS = useMemo(
@@ -330,6 +342,25 @@ export default function MonthlyPnLBarChart({
 
   const dataKey = mode === "PCT" ? "pct" : "pnl";
 
+  // ✅ pewny handler tapnięcia słupka (działa na mobile bez hover)
+  const handleBarTap = (row, index, evt) => {
+    if (!isCoarse) return;
+    try {
+      evt?.stopPropagation?.();
+    } catch {}
+
+    if (!row) return;
+
+    setPinned((prev) => {
+      const same = prev?.label === row.ym;
+      if (same) return null;
+      return {
+        label: row.ym,
+        payload: [{ payload: row }],
+      };
+    });
+  };
+
   return (
     <section className="card mt-4">
       <div className="card-inner !p-2 sm:!p-5">
@@ -391,9 +422,20 @@ export default function MonthlyPnLBarChart({
         </div>
 
         {/* ✅ mobile: przypinany tooltip */}
-        <div className="relative w-full h-64 sm:h-72" style={{ touchAction: "pan-y" }}>
+        <div
+          className="relative w-full h-64 sm:h-72"
+          style={{ touchAction: "pan-y" }}
+          onClick={() => {
+            if (isCoarse && pinned) setPinned(null); // tap na tło zamyka
+          }}
+        >
           {isCoarse && pinned ? (
-            <div className="absolute left-1/2 -translate-x-1/2 top-4 z-[70]">
+            <div
+              className="absolute left-1/2 -translate-x-1/2 top-4 z-[70]"
+              onClick={(e) => {
+                e.stopPropagation(); // klik w tooltip nie zamyka
+              }}
+            >
               <TooltipContent
                 active
                 payload={pinned.payload}
@@ -405,20 +447,7 @@ export default function MonthlyPnLBarChart({
           ) : null}
 
           <ResponsiveContainer>
-            <BarChart
-              data={monthly}
-              margin={{ top: 8, right: 0, left: 0, bottom: 0 }}
-              onClick={(e) => {
-                if (!isCoarse) return;
-                if (pinned) {
-                  setPinned(null);
-                  return;
-                }
-                if (e?.activePayload?.length) {
-                  setPinned({ label: e.activeLabel, payload: e.activePayload });
-                }
-              }}
-            >
+            <BarChart data={monthly} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
               <XAxis dataKey="ym" tick={{ fontSize: 11 }} minTickGap={14} interval="preserveStartEnd" />
               <YAxis
@@ -437,13 +466,15 @@ export default function MonthlyPnLBarChart({
                 <Tooltip
                   wrapperStyle={{ zIndex: 60, outline: "none" }}
                   allowEscapeViewBox={{ x: false, y: false }}
-                  content={(props) => (
-                    <TooltipContent {...props} mode={mode} onClose={null} />
-                  )}
+                  content={(props) => <TooltipContent {...props} mode={mode} onClose={null} />}
                 />
               ) : null}
 
-              <Bar dataKey={dataKey} radius={[6, 6, 6, 6]}>
+              <Bar
+                dataKey={dataKey}
+                radius={[6, 6, 6, 6]}
+                onClick={handleBarTap}
+              >
                 {monthly.map((m, idx) => {
                   const val = Number(m[dataKey]) || 0;
                   const isPos = val >= 0;

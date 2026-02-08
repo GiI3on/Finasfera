@@ -212,14 +212,8 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                         </span>
                       </td>
 
-                      <td className="py-3 pr-2 text-right">
-                        <button
-                          className="text-zinc-400 hover:text-zinc-200 underline decoration-zinc-700/80 underline-offset-4"
-                          onClick={() => onToggle?.(g.key)}
-                        >
-                          {open ? "Zwiń" : "Szczegóły"}
-                        </button>
-                      </td>
+                      {/* ✅ USUNIĘTO "Szczegóły/Zwiń" z prawej strony (zostaje tylko strzałka po lewej) */}
+                      <td className="py-3 pr-2 text-right"></td>
                     </tr>
 
                     {open && (
