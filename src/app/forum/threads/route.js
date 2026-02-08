@@ -1,3 +1,6 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { apiCreateThread } from "../apiHandlers";
 // ⬇⬇⬇ poprawna ścieżka do src/lib/firebaseAdmin z poziomu: src/app/forum/threads/route.js

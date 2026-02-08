@@ -1,4 +1,8 @@
 // src/app/forum/admin/purge/route.js
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+
 import { NextResponse } from "next/server";
 import { adminDb } from "../../../../lib/firebaseAdmin";
 import { isAdmin } from "../../../../lib/isAdmin";

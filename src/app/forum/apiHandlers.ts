@@ -1,12 +1,12 @@
 // src/app/forum/apiHandlers.ts
 import { adminDb } from "../../lib/firebaseAdmin";
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { moderateText, badgesFromStats, computeRank } from "../../lib/forumCore";
 
 /* ────────────────────────────────────────────────────────────
    DEBUG & HELPERS
 ───────────────────────────────────────────────────────────── */
-const db = adminDb;
+const db: Firestore = adminDb as unknown as Firestore;
 
 const RESERVED_IDS = new Set(["__ALL__", "__ID__", "__NAME__"]);
 const isReservedId = (s?: string | null) => !!s && RESERVED_IDS.has(s);
@@ -348,7 +348,6 @@ export async function apiCreatePost(payload: {
     { merge: true }
   );
 
-  // zwrot przyjazny dla klienta (ISO dla createdAt)
   return {
     id: postRef.id,
     threadId: tid,

@@ -1,4 +1,8 @@
 // src/app/forum/feed/route.js
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { apiGetThreads } from "../apiHandlers";
 import { adminDb } from "../../../lib/firebaseAdmin";
