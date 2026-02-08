@@ -1,52 +1,70 @@
 // src/lib/firebaseAdmin.js
-import 'server-only';
-import { getApps, initializeApp, cert, applicationDefault } from "firebase-admin/app";
+import "server-only";
+import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 
-
-/** Buduje credential z env albo z GOOGLE_APPLICATION_CREDENTIALS */
-function buildCredential() {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = (process.env.FIREBASE_PRIVATE_KEY || "")
-  .replace(/\\n/g, "\n")
-  .replace(/^"|"$/g, "");
-
-
-  if (projectId && clientEmail && privateKey) {
-    return cert({ projectId, clientEmail, privateKey });
-  }
-  return applicationDefault();
+/** Bezpieczne pobranie ENV (string albo pusty) */
+function env(name) {
+  const v = process.env[name];
+  return typeof v === "string" ? v : "";
 }
 
-// Użyj globalThis, żeby zachować singleton między reloadami (dev/HMR)
+/** Buduje credential z ENV i wali czytelnym błędem, gdy brakuje danych */
+function buildAdminConfigOrThrow() {
+  const projectId =
+    env("FIREBASE_PROJECT_ID") || env("GOOGLE_CLOUD_PROJECT") || env("GCLOUD_PROJECT");
+
+  const clientEmail = env("FIREBASE_CLIENT_EMAIL");
+
+  // napraw \n + usuń przypadkowe cudzysłowy na początku/końcu
+  const privateKey = env("FIREBASE_PRIVATE_KEY")
+    .replace(/\\n/g, "\n")
+    .replace(/^"|"$/g, "");
+
+  const missing = [];
+  if (!projectId) missing.push("FIREBASE_PROJECT_ID");
+  if (!clientEmail) missing.push("FIREBASE_CLIENT_EMAIL");
+  if (!privateKey) missing.push("FIREBASE_PRIVATE_KEY");
+
+  if (missing.length) {
+    throw new Error(
+      `Brak zmiennych ENV na serwerze: ${missing.join(
+        ", "
+      )}. Ustaw je w Vercel → Project Settings → Environment Variables (Production/Preview/Development) i zrób Redeploy.`
+    );
+  }
+
+  return {
+    projectId,
+    credential: cert({ projectId, clientEmail, privateKey }),
+  };
+}
+
+// Singleton między reloadami (dev/HMR) i w lambdzie
 const g = globalThis;
 
 if (!g.__FB_ADMIN_SINGLETON__) {
+  const { projectId, credential } = buildAdminConfigOrThrow();
+
   const app =
     getApps().length > 0
       ? getApps()[0]
       : initializeApp({
-          credential: buildCredential(),
+          credential,
+          projectId,
         });
 
   const db = getFirestore(app);
-  // settings() wolno ustawić tylko raz – dlatego owijamy w try/catch
+
+  // settings() można ustawić tylko raz
   try {
-    // jeśli ktoś już ustawił, Firestore rzuci błędem — ignorujemy
     db.settings({ ignoreUndefinedProperties: true });
-  } catch (_) {
-    // no-op
-  }
+  } catch (_) {}
 
   const auth = getAuth(app);
 
-  g.__FB_ADMIN_SINGLETON__ = {
-    app,
-    db,
-    auth,
-  };
+  g.__FB_ADMIN_SINGLETON__ = { app, db, auth };
 }
 
 const { db: adminDb, auth: adminAuth } = g.__FB_ADMIN_SINGLETON__;
