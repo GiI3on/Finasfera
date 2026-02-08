@@ -1,11 +1,11 @@
 // src/app/forum/comment/route.js
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 import { NextResponse } from "next/server";
 import { adminDb } from "../../../lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
+import { isAdmin } from "../../../lib/isAdmin";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /* ===== Pomocnik: znajdź wątek po docId / id / publicId ===== */
 async function resolveThreadRef(threadId) {
@@ -40,7 +40,7 @@ async function resolveThreadRef(threadId) {
 
 /* ============================================================
    GET /forum/comment?threadId=...&limit=200&sort=new|top
-   -> pobiera komentarze (preview i pełne)
+   -> pobiera komentarze
    ============================================================ */
 export async function GET(req) {
   try {
@@ -70,9 +70,9 @@ export async function GET(req) {
     const lim = Number.isFinite(limitRaw)
       ? Math.max(1, Math.min(1000, limitRaw))
       : 200;
-    q = q.limit(lim);
 
-    const snap = await q.get();
+    const snap = await q.limit(lim).get();
+
     const comments = snap.docs.map((d) => {
       const data = d.data() || {};
       const createdAt =
@@ -127,8 +127,8 @@ export async function POST(req) {
     const threadRef =
       (await resolveThreadRef(threadId)) ||
       adminDb.collection("threads").doc(String(threadId));
-    const commentsRef = threadRef.collection("comments");
 
+    const commentsRef = threadRef.collection("comments");
     const newComment = { uid, name, body, createdAt: now, score: 0 };
     const doc = await commentsRef.add(newComment);
 
@@ -145,6 +145,7 @@ export async function POST(req) {
       .runTransaction(async (t) => {
         const snap = await t.get(userRef);
         const data = snap.exists ? snap.data() : {};
+
         let last = null;
         const raw = data?.lastActiveAt || null;
         if (raw)
@@ -154,22 +155,17 @@ export async function POST(req) {
               : raw instanceof Date
               ? raw
               : new Date(raw);
+
         let dayStreak = Number(data?.dayStreak || 0);
         const today = new Date();
         let diffDays = 999;
+
         if (last) {
-          const lastUTC = Date.UTC(
-            last.getFullYear(),
-            last.getMonth(),
-            last.getDate()
-          );
-          const todayUTC = Date.UTC(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate()
-          );
+          const lastUTC = Date.UTC(last.getFullYear(), last.getMonth(), last.getDate());
+          const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
           diffDays = Math.round((todayUTC - lastUTC) / 86400000);
         }
+
         if (!last) dayStreak = 1;
         else if (diffDays === 0) dayStreak = Math.max(dayStreak, 1);
         else if (diffDays === 1) dayStreak = dayStreak + 1;
@@ -205,20 +201,25 @@ export async function POST(req) {
 }
 
 /* ============================================================
-   DELETE /forum/comment?threadId=...&commentId=...
-   -> usuwa komentarz
+   DELETE /forum/comment?threadId=...&commentId=...&uid=...
+   -> usuwa komentarz (admin)
    ============================================================ */
 export async function DELETE(req) {
   try {
     const url = new URL(req.url);
     const threadId = (url.searchParams.get("threadId") || "").trim();
     const commentId = (url.searchParams.get("commentId") || "").trim();
+    const uid = (url.searchParams.get("uid") || "").trim();
 
     if (!threadId || !commentId) {
       return NextResponse.json(
         { ok: false, error: "missing ids" },
         { status: 400 }
       );
+    }
+
+    if (!(await isAdmin(uid))) {
+      return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
     }
 
     const threadRef =

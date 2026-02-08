@@ -1,10 +1,11 @@
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
+// src/app/forum/threads/route.js
 import { NextResponse } from "next/server";
 import { apiCreateThread } from "../apiHandlers";
-// ⬇⬇⬇ poprawna ścieżka do src/lib/firebaseAdmin z poziomu: src/app/forum/threads/route.js
 import { adminDb } from "../../../lib/firebaseAdmin";
+import { isAdmin } from "../../../lib/isAdmin";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /* POST /forum/threads  → tworzy nowy wątek (wywoływane przez modal „Utwórz post”) */
 export async function POST(req) {
@@ -18,7 +19,7 @@ export async function POST(req) {
       promotedUntil,
       promoUrl,
 
-      // ⬇⬇⬇ DODANE: autor i flaga anonimowości
+      // autor + flaga anonimowości
       uid,
       name,
       isAnonymous,
@@ -28,16 +29,16 @@ export async function POST(req) {
       return NextResponse.json({ error: "Brak treści posta." }, { status: 422 });
     }
 
-    // Nie używamy już pola "title" od użytkownika — generujemy krótki tytuł z treści:
+    // auto tytuł z 1. linii
     const autoTitle =
       String(content).trim().split(/\n/)[0].slice(0, 120) || "(bez tytułu)";
 
-    // Nazwa autora z uwzględnieniem anonimizacji
+    // autor z anonimizacją
     const authorName = isAnonymous ? "Anon" : (name || "Użytkownik");
 
-    // 1) Tworzenie wątku przez Twój handler (jak dotychczas)
+    // 1) create przez handler
     const created = await apiCreateThread({
-      title: autoTitle,                 // ← automatyczny tytuł
+      title: autoTitle,
       body: String(content || ""),
       tag: tag ? String(tag) : undefined,
       isPromoted: !!isPromoted,
@@ -45,20 +46,16 @@ export async function POST(req) {
       promotedUntil: promotedUntil ? String(promotedUntil) : undefined,
       promoUrl: promoUrl ? String(promoUrl) : undefined,
 
-      // Przekazujemy też pola autora – jeśli apiCreateThread je zapisuje, super:
+      // dodatkowe pola (handler może zignorować — potem patch)
       authorId: uid || null,
       author: authorName,
       isAnonymous: !!isAnonymous,
-
-      // I startowe reakcje (na wszelki wypadek)
       reactions: { like: 0, heart: 0 },
-
-      // DOBRA PRAKTYKA: count na 0 (jeśli Twój handler to respektuje)
       repliesCount: 0,
       views: 0,
     });
 
-    // 2) DOPILNUJEMY spójności w dokumencie (gdyby apiCreateThread zignorował powyższe)
+    // 2) best-effort patch w Firestore (spójność)
     try {
       const id =
         created?.id ||
@@ -72,21 +69,16 @@ export async function POST(req) {
           authorId: uid || null,
           author: authorName,
           isAnonymous: !!isAnonymous,
-          // jeśli nie istnieją, ustaw bezpieczne domyślne:
           reactions: { like: 0, heart: 0 },
           repliesCount: 0,
           views: 0,
+          createdAt: now,
+          lastPostAt: now,
         };
-
-        // Ustaw daty, tylko jeśli dokument ich nie ma (set merge je po prostu doda)
-        patch.createdAt = now;
-        patch.lastPostAt = now;
 
         await adminDb.collection("threads").doc(id).set(patch, { merge: true });
       }
-    } catch (_) {
-      // cicho — to tylko „best-effort” patch
-    }
+    } catch (_) {}
 
     return NextResponse.json(created, { status: 200 });
   } catch (e) {
@@ -97,27 +89,37 @@ export async function POST(req) {
   }
 }
 
-/* DELETE /forum/threads?id=... → (admin) usuwa wątek wraz z podkolekcjami */
+/* DELETE /forum/threads?id=...&uid=... → (admin) usuwa wątek wraz z podkolekcjami */
 export async function DELETE(req) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
+
+    const id = (searchParams.get("id") || "").trim();
     if (!id) return NextResponse.json({ error: "Brak id" }, { status: 422 });
+
+    const uid = (searchParams.get("uid") || "").trim();
+    if (!(await isAdmin(uid))) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
 
     const db = adminDb;
     const threadRef = db.collection("threads").doc(id);
 
-    // ⬇⬇⬇ usuń comments (zamiast posts — spójne z resztą projektu)
-    const commentsSnap = await threadRef.collection("comments").limit(500).get();
-    const batch1 = db.batch();
-    commentsSnap.forEach((d) => batch1.delete(d.ref));
-    await batch1.commit();
+    // helper: usuń całą podkolekcję w paczkach
+    async function deleteSubcollection(name) {
+      while (true) {
+        const snap = await threadRef.collection(name).limit(500).get();
+        if (snap.empty) break;
+        const batch = db.batch();
+        snap.forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
 
-    // usuń reactions
-    const reactSnap = await threadRef.collection("reactions").limit(500).get();
-    const batch2 = db.batch();
-    reactSnap.forEach((d) => batch2.delete(d.ref));
-    await batch2.commit();
+    // usuń komentarze / posty / reakcje (bezpiecznie)
+    await deleteSubcollection("comments");
+    await deleteSubcollection("posts");
+    await deleteSubcollection("reactions");
 
     // usuń dokument wątku
     await threadRef.delete();

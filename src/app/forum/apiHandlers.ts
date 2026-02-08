@@ -2,6 +2,8 @@
 import { adminDb } from "../../lib/firebaseAdmin";
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { moderateText, badgesFromStats, computeRank } from "../../lib/forumCore";
+import { isAdmin } from "../../lib/isAdmin";
+
 
 /* ────────────────────────────────────────────────────────────
    DEBUG & HELPERS
@@ -223,13 +225,16 @@ export async function apiGetSidebarData(uid?: string, displayName?: string) {
     stats.rank = stats.rank || computeRank(postsCount);
   }
 
-  const profile = {
-    name: visibleName,
-    rank: stats.rank,
-    badges: Array.isArray(stats.badges) ? stats.badges : [],
-    postsCount: stats.postsCount || 0,
-    milestones: [1, 10, 50, 100, 200],
-  };
+const profile = {
+  uid: userId,
+  name: visibleName,
+  rank: stats.rank,
+  badges: Array.isArray(stats.badges) ? stats.badges : [],
+  postsCount: stats.postsCount || 0,
+  milestones: [1, 10, 50, 100, 200],
+  isAdmin: uid ? await isAdmin(uid) : false,
+};
+
 
   const now = new Date();
   let promoted: Array<{ id: string; title: string; sponsoredBy: string | null; promoUrl: string | null }> = [];

@@ -299,7 +299,11 @@ function CommentsBlock({ threadId, initialCount = 0, canAdmin, uid, user, onDele
                           className="ml-auto rounded-md border border-red-900/60 bg-red-900/20 px-2 py-[2px] text-[11px] text-red-300 hover:bg-red-900/30"
                           onClick={async () => {
                             if (!confirm("Usunąć ten komentarz?")) return;
-                            const res = await fetch(`/forum/comment?threadId=${threadId}&commentId=${c.id}`, { method: "DELETE" });
+                            const res = await fetch(
+  `/forum/comment?threadId=${threadId}&commentId=${c.id}&uid=${encodeURIComponent(uid || "")}`,
+  { method: "DELETE" }
+);
+
                             const json = await res.json().catch(() => ({}));
                             if (json?.ok) {
                               setPreview((prev) => prev.filter((x) => x.id !== c.id));
