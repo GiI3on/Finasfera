@@ -27,21 +27,44 @@ function isoLocal(d = new Date()) {
 }
 
 /* =========================================================
+   ✅ FIX: zawsze zamień portfolioId na string (lub null)
+   (żeby nie robiło [object Object])
+   ========================================================= */
+function normPortfolioId(x) {
+  if (x == null) return null;
+  if (typeof x === "string") {
+    const s = x.trim();
+    return s ? s : null;
+  }
+  if (typeof x === "number") return String(x);
+  if (typeof x === "object") {
+    const id = x?.id;
+    if (typeof id === "string" && id.trim()) return id.trim();
+    if (typeof id === "number") return String(id);
+    return null;
+  }
+  return null;
+}
+
+/* =========================================================
    ŚCIEŻKI: holdings & cashflows (główny portfel vs. wiele portfeli)
    ========================================================= */
 function holdingsCol(uid, portfolioId = null) {
-  return portfolioId
-    ? collection(db, "users", uid, "portfolios", portfolioId, "holdings")
+  const pid = normPortfolioId(portfolioId);
+  return pid
+    ? collection(db, "users", uid, "portfolios", pid, "holdings")
     : collection(db, "users", uid, "holdings");
 }
 function holdingDoc(uid, portfolioId, holdingId) {
-  return portfolioId
-    ? doc(db, "users", uid, "portfolios", portfolioId, "holdings", holdingId)
+  const pid = normPortfolioId(portfolioId);
+  return pid
+    ? doc(db, "users", uid, "portfolios", pid, "holdings", holdingId)
     : doc(db, "users", uid, "holdings", holdingId);
 }
 function cashflowsCol(uid, portfolioId = null) {
-  return portfolioId
-    ? collection(db, "users", uid, "portfolios", portfolioId, "cashflows")
+  const pid = normPortfolioId(portfolioId);
+  return pid
+    ? collection(db, "users", uid, "portfolios", pid, "cashflows")
     : collection(db, "users", uid, "cashflows");
 }
 
@@ -57,12 +80,25 @@ function cashflowsCol(uid, portfolioId = null) {
  */
 export function listenHoldings(uid, a, b) {
   if (!uid) return () => {};
+
   let portfolioId = null;
-  let cb = a;
-  if ((typeof a === "string" || a === null) && typeof b === "function") {
+  let cb = null;
+
+  // ✅ FIX: obsłuż oba warianty:
+  // listenHoldings(uid, cb)
+  // listenHoldings(uid, portfolioId (string/null/obj), cb)
+  if (typeof a === "function") {
+    cb = a;
+  } else if (typeof b === "function") {
     portfolioId = a;
     cb = b;
+  } else {
+    cb = null;
   }
+
+  const emit = (rows) => {
+    if (typeof cb === "function") cb(rows);
+  };
 
   // 1) główny listener: users/{uid}/.../holdings
   const qCol = holdingsCol(uid, portfolioId || null);
@@ -78,11 +114,12 @@ export function listenHoldings(uid, a, b) {
       // 2) fallback: top-level 'portfolio' (Twoja istniejąca kolekcja)
       const topCol = collection(db, "portfolio");
       const wh = [where("userId", "==", uid)];
-      // Jeśli trzymasz 'portfolioId' w dokumentach kolekcji 'portfolio', filtruj po nim.
-      if (portfolioId != null && portfolioId !== "") {
-        // Odkomentuj poniższą linię, jeśli korzystasz z pola portfolioId:
-        wh.push(where("portfolioId", "==", String(portfolioId)));
+
+      const pid = normPortfolioId(portfolioId);
+      if (pid != null && pid !== "") {
+        wh.push(where("portfolioId", "==", String(pid)));
       }
+
       const qTop = query(topCol, ...wh, orderBy("buyDate", "asc"));
 
       offFallback = onSnapshot(
@@ -94,7 +131,9 @@ export function listenHoldings(uid, a, b) {
             mapped.push({
               id: d.id,
               name: r.symbol || r.name || "—",
-              pair: r.symbol ? { yahoo: String(r.symbol).toUpperCase() } : (r.pair || null),
+              pair: r.symbol
+                ? { yahoo: String(r.symbol).toUpperCase() }
+                : (r.pair || null),
               shares: Number(r.shares) || 0,
               buyPrice: Number(r.buyPrice) || 0, // PLN
               buyDate: r.buyDate || null,
@@ -102,12 +141,12 @@ export function listenHoldings(uid, a, b) {
               prevClose: Number(r.prevClose) || 0,
             });
           });
-          cb?.(mapped);
+          emit(mapped);
         },
-        () => cb?.([])
+        () => emit([])
       );
     } catch {
-      cb?.([]);
+      emit([]);
     }
   };
 
@@ -117,18 +156,15 @@ export function listenHoldings(uid, a, b) {
       const rows = [];
       snap.forEach((d) => rows.push({ id: d.id, ...d.data() }));
       if (rows.length > 0) {
-        cb?.(rows);
+        emit(rows);
       } else {
-        // brak danych w users/... → włącz fallback
         attachFallback();
-        // emit pusty (fallback za chwilę dośle swoje)
-        cb?.([]);
+        emit([]);
       }
     },
-    // błąd users/... → spróbuj od razu fallback
     () => {
       attachFallback();
-      cb?.([]);
+      emit([]);
     }
   );
 
@@ -145,7 +181,10 @@ export async function addHolding(uid, a, b, c) {
   let portfolioId = null;
   let item = a;
   let opts = b || {};
-  if (typeof a === "string" || a === null) {
+
+  // ✅ FIX: jeśli podano 3 argumenty i pierwszy wygląda jak portfolioId (string/null/obj)
+  // to traktujemy go jako portfolioId
+  if (typeof c !== "undefined") {
     portfolioId = a || null;
     item = b;
     opts = c || {};
@@ -246,7 +285,7 @@ async function setHoldingShares(uid, portfolioId, id, shares) {
 export async function sellPosition(uid, a, b) {
   let portfolioId = null;
   let p = a;
-  if (typeof a === "string" || a === null) { portfolioId = a || null; p = b; }
+  if (typeof b !== "undefined") { portfolioId = a || null; p = b; }
 
   const symbol  = String(p.yahoo || "").toUpperCase().trim();
   const sellQty = Number(p.qty) || 0;
@@ -296,7 +335,7 @@ export async function sellPosition(uid, a, b) {
 export async function applySplit(uid, a, b) {
   let portfolioId = null;
   let p = a;
-  if (typeof a === "string" || a === null) { portfolioId = a || null; p = b; }
+  if (typeof b !== "undefined") { portfolioId = a || null; p = b; }
 
   const symbol = String(p.yahoo || "").toUpperCase().trim();
   const ratio  = Number(p.ratio);
@@ -334,7 +373,12 @@ export async function addCashflow(uid, a, b) {
 
   let portfolioId = null;
   let p = a;
-  if (typeof a === "string" || a === null) { portfolioId = a || null; p = b; }
+
+  // ✅ FIX: jeśli podano 3 argumenty → (uid, portfolioId, payload)
+  if (typeof b !== "undefined") {
+    portfolioId = a || null;
+    p = b;
+  }
 
   const payload = {
     amount: Number(p?.amount) || 0,
@@ -368,8 +412,12 @@ export async function addCashOperation(uid, a, b) {
 export function listenCashBalance(uid, a, b) {
   if (!uid) return () => {};
   let portfolioId = null;
-  let cb = a;
-  if (typeof a === "string" || a === null) { portfolioId = a || null; cb = b; }
+  let cb = null;
+
+  if (typeof a === "function") cb = a;
+  else if (typeof b === "function") { portfolioId = a || null; cb = b; }
+
+  const emit = (x) => { if (typeof cb === "function") cb(x); };
 
   const q = query(cashflowsCol(uid, portfolioId), orderBy("date", "asc"));
   return onSnapshot(q, (snap) => {
@@ -384,7 +432,7 @@ export function listenCashBalance(uid, a, b) {
       byCcy.set(ccy, (byCcy.get(ccy) || 0) + amt);
       flows.push(row);
     });
-    cb?.({ balance, byCurrency: Object.fromEntries(byCcy), flows });
+    emit({ balance, byCurrency: Object.fromEntries(byCcy), flows });
   });
 }
 
@@ -558,7 +606,7 @@ export async function backfillMissingDeposits(uid, portfolioId = null) {
 /** 🔁 Automatyczny backfill – uruchamiany raz na portfel (znaczniki w Firestore) */
 export async function autoBackfillBuyFlowsIfNeeded(uid, portfolioId = null) {
   if (!uid) return { skipped: true };
-  const key = portfolioId || "__main__";
+  const key = normPortfolioId(portfolioId) || "__main__";
   const flagRef = doc(db, "users", uid, "meta", `backfill_buy_v1__${key}`);
 
   try {
@@ -575,7 +623,7 @@ export async function autoBackfillBuyFlowsIfNeeded(uid, portfolioId = null) {
 
 export async function autoBackfillDepositsIfNeeded(uid, portfolioId = null) {
   if (!uid) return { skipped: true };
-  const key = portfolioId || "__main__";
+  const key = normPortfolioId(portfolioId) || "__main__";
   const flagRef = doc(db, "users", uid, "meta", `backfill_deposits_v1__${key}`);
 
   try {
@@ -619,32 +667,23 @@ export async function clearDefaultPortfolio(uid) {
   await _deleteCollectionAll(holdingsCol(uid, null));
   await _deleteCollectionAll(cashflowsCol(uid, null));
   // wyczyść znaczniki backfill
-  try {
-    await deleteDoc(doc(db, "users", uid, "meta", "backfill_buy_v1____main__"));
-  } catch {}
-  try {
-    await deleteDoc(doc(db, "users", uid, "meta", "backfill_deposits_v1____main__"));
-  } catch {}
+  try { await deleteDoc(doc(db, "users", uid, "meta", "backfill_buy_v1____main__")); } catch {}
+  try { await deleteDoc(doc(db, "users", uid, "meta", "backfill_deposits_v1____main__")); } catch {}
 }
 
 /** Usuwa portfel użytkownika wraz z subkolekcjami i dokumentem meta */
 export async function deletePortfolioDeep(uid, portfolioId) {
   if (!uid) throw new Error("deletePortfolioDeep: missing uid");
-  if (!portfolioId) throw new Error("deletePortfolioDeep: missing portfolioId");
+  const pid = normPortfolioId(portfolioId);
+  if (!pid) throw new Error("deletePortfolioDeep: missing portfolioId");
 
-  await _deleteCollectionAll(holdingsCol(uid, portfolioId));
-  await _deleteCollectionAll(cashflowsCol(uid, portfolioId));
+  await _deleteCollectionAll(holdingsCol(uid, pid));
+  await _deleteCollectionAll(cashflowsCol(uid, pid));
 
-  try {
-    await deleteDoc(doc(db, "users", uid, "meta", `backfill_buy_v1__${portfolioId}`));
-  } catch {}
-  try {
-    await deleteDoc(doc(db, "users", uid, "meta", `backfill_deposits_v1__${portfolioId}`));
-  } catch {}
+  try { await deleteDoc(doc(db, "users", uid, "meta", `backfill_buy_v1__${pid}`)); } catch {}
+  try { await deleteDoc(doc(db, "users", uid, "meta", `backfill_deposits_v1__${pid}`)); } catch {}
 
-  try {
-    await deleteDoc(doc(db, "users", uid, "portfolios", portfolioId));
-  } catch {}
+  try { await deleteDoc(doc(db, "users", uid, "portfolios", pid)); } catch {}
 }
 
 /* =========================================================
@@ -674,9 +713,10 @@ export async function countAllPortfolios(uid) {
 
 // wybór następnego portfela po usunięciu
 async function _chooseNextPortfolioId(uid, removedId) {
-  const rest = (await listPortfolios(uid)).map(x => x.id).filter(id => id !== removedId);
-  if (rest.length) return rest[0]; // przełącz na pierwszy dostępny named
-  return null; // brak named -> root
+  const rid = normPortfolioId(removedId);
+  const rest = (await listPortfolios(uid)).map(x => x.id).filter(id => id !== rid);
+  if (rest.length) return rest[0];
+  return null;
 }
 
 /**
@@ -694,13 +734,15 @@ export async function safeDeletePortfolio(uid, portfolioId) {
     return { deleted: false, nextId: null, reason: "Musi pozostać co najmniej jeden portfel." };
   }
 
-  if (portfolioId == null) {
-    await clearDefaultPortfolio(uid); // „usunięcie” root = wyczyszczenie
+  const pid = normPortfolioId(portfolioId);
+
+  if (pid == null) {
+    await clearDefaultPortfolio(uid);
     const nextId = await _chooseNextPortfolioId(uid, null);
     return { deleted: true, nextId };
   } else {
-    await deletePortfolioDeep(uid, portfolioId);
-    const nextId = await _chooseNextPortfolioId(uid, portfolioId);
+    await deletePortfolioDeep(uid, pid);
+    const nextId = await _chooseNextPortfolioId(uid, pid);
     return { deleted: true, nextId };
   }
 }
@@ -728,16 +770,15 @@ export async function addDividendDetailed(uid, a, b) {
   const payDateISO = p?.payDate ? String(p.payDate).slice(0, 10) : isoLocal(new Date());
 
   const payload = {
-    amount: Number(netPLN) || 0,      // NETTO w PLN (do metryk)
+    amount: Number(netPLN) || 0,
     type: "dividend",
     date: payDateISO,
     currency: "PLN",
     note: p?.note || (p?.symbol || "Dywidenda"),
-    excludeFromTWR: true,             // dywidendy zwykle wyłączamy z TWR
+    excludeFromTWR: true,
     storno: false,
     linkedTxnId: null,
 
-    // Szczegóły oryginalne
     symbol: p?.symbol || null,
     payDate: payDateISO,
     exDate: p?.exDate ? String(p.exDate).slice(0, 10) : null,
@@ -760,22 +801,27 @@ export async function addDividendDetailed(uid, a, b) {
    ========================================================= */
 
 function dividendPlansCol(uid, portfolioId = null) {
-  return portfolioId
-    ? collection(db, "users", uid, "portfolios", portfolioId, "dividendPlans")
+  const pid = normPortfolioId(portfolioId);
+  return pid
+    ? collection(db, "users", uid, "portfolios", pid, "dividendPlans")
     : collection(db, "users", uid, "dividendPlans");
 }
 
 export function listenDividendPlans(uid, a, b) {
   if (!uid) return () => {};
   let portfolioId = null;
-  let cb = a;
-  if (typeof a === "string" || a === null) { portfolioId = a || null; cb = b; }
+  let cb = null;
+
+  if (typeof a === "function") cb = a;
+  else if (typeof b === "function") { portfolioId = a || null; cb = b; }
+
+  const emit = (rows) => { if (typeof cb === "function") cb(rows); };
 
   const q = query(dividendPlansCol(uid, portfolioId), orderBy("exDate", "asc"));
   return onSnapshot(q, (snap) => {
     const rows = [];
     snap.forEach((d) => rows.push({ id: d.id, ...d.data() }));
-    cb?.(rows);
+    emit(rows);
   });
 }
 
@@ -784,14 +830,14 @@ export async function addDividendPlan(uid, a, b) {
 
   let portfolioId = null;
   let p = a;
-  if (typeof a === "string" || a === null) { portfolioId = a || null; p = b; }
+  if (typeof b !== "undefined") { portfolioId = a || null; p = b; }
 
   const payload = {
     symbol:   String(p?.symbol || "").toUpperCase(),
     exDate:   String(p?.exDate || "").slice(0, 10),
-    gross:    Number(p?.gross) || 0,         // w walucie źródłowej
+    gross:    Number(p?.gross) || 0,
     currency: String(p?.currency || "PLN").toUpperCase(),
-    fxAtExDate: Number.isFinite(p?.fxAtExDate) ? Number(p.fxAtExDate) : null, // opcjonalnie
+    fxAtExDate: Number.isFinite(p?.fxAtExDate) ? Number(p.fxAtExDate) : null,
     netEstimatePLN: Number.isFinite(p?.netEstimatePLN) ? Number(p.netEstimatePLN) : null,
     note: p?.note || null,
     ts: serverTimestamp(),
@@ -806,9 +852,13 @@ export async function deleteDividendPlan(uid, a, b) {
   const portfolioId = hasPortfolioArg ? (a || null) : null;
   const id = hasPortfolioArg ? b : a;
   if (!id) return;
-  const ref = portfolioId
-    ? doc(db, "users", uid, "portfolios", portfolioId, "dividendPlans", id)
+
+  const pid = normPortfolioId(portfolioId);
+
+  const ref = pid
+    ? doc(db, "users", uid, "portfolios", pid, "dividendPlans", id)
     : doc(db, "users", uid, "dividendPlans", id);
+
   await deleteDoc(ref);
 }
 
@@ -820,8 +870,9 @@ export async function deleteDividendPlan(uid, a, b) {
    ========================================================= */
 
 function _liveValueDoc(uid, portfolioId = null) {
-  return portfolioId
-    ? doc(db, "users", uid, "portfolios", portfolioId, "meta", "liveValue")
+  const pid = normPortfolioId(portfolioId);
+  return pid
+    ? doc(db, "users", uid, "portfolios", pid, "meta", "liveValue")
     : doc(db, "users", uid, "meta", "liveValue");
 }
 
@@ -852,9 +903,9 @@ export function listenPortfolioValue(uid, scope, opts = {}) {
     // SUMA ALL: root + przekazane portfele
     if (scope === "__ALL__") {
       const ids = Array.isArray(opts.portfolioIds)
-        ? Array.from(new Set(opts.portfolioIds.map(x => (x == null ? "" : String(x)))))
+        ? Array.from(new Set(opts.portfolioIds.map(x => (normPortfolioId(x) ?? ""))))
         : [];
-      if (!ids.includes("")) ids.unshift(""); // dołóż root
+      if (!ids.includes("")) ids.unshift("");
 
       const map = new Map();
       const unsubs = [];
@@ -882,7 +933,7 @@ export function listenPortfolioValue(uid, scope, opts = {}) {
     }
 
     // POJEDYNCZY PORTFEL ("" = root lub konkretne id)
-    const pid = scope === "" ? "" : String(scope || "");
+    const pid = scope === "" ? "" : (normPortfolioId(scope) || "");
     return onSnapshot(
       _liveValueDoc(uid, pid || null),
       (snap) => { try { callback((snap.exists() && Number(snap.data()?.valuePLN)) || 0); } catch {} },

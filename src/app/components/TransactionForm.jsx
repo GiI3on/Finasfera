@@ -9,19 +9,21 @@ import {
   addWithdrawal,
   listenCashBalance,
 } from "../../lib/portfolioStore";
+import { addTrade } from "../../lib/tradesStore"; // ✅ NOWE (ledger BUY/SELL)
 import { isWeekend, prevWeekday, snapToLastClose } from "../../lib/marketSnap"; // ⬅️ DODANE
 
 /* ==== helpers ==== */
 const fmtPLN = (v) =>
-  new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" })
-    .format(Number(v || 0));
+  new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" }).format(
+    Number(v || 0)
+  );
 
 const toNum = (v) => Number(String(v ?? "0").replace(",", ".")) || 0;
 
 /* ==== komponent ==== */
 export default function TransactionForm({
   uid,
-  portfolioId,            // ⬅️ NOWE: id bieżącego portfela (może być null dla głównego)
+  portfolioId, // ⬅️ NOWE: id bieżącego portfela (może być null dla głównego)
   onClose,
   onSaved,
   onDone,
@@ -69,15 +71,18 @@ export default function TransactionForm({
     if (!uid) return;
     const unsub = listenCashBalance(
       uid,
-      portfolioId ?? null,              // ⬅️ klucz: saldo z wybranego portfela
+      portfolioId ?? null, // ⬅️ klucz: saldo z wybranego portfela
       ({ balance }) => setBalance(Number(balance) || 0)
     );
     return () => unsub?.();
-  }, [uid, portfolioId]);               // ⬅️ portfolioId w deps
+  }, [uid, portfolioId]); // ⬅️ portfolioId w deps
 
   /* ==== FX ==== */
   useEffect(() => {
-    if (ccy === "PLN") { setFx(1); return; }
+    if (ccy === "PLN") {
+      setFx(1);
+      return;
+    }
     // jeśli nie masz endpointu FX — zostaw 1 (bezpieczny fallback)
     setFx(1);
   }, [ccy, date]);
@@ -86,7 +91,10 @@ export default function TransactionForm({
   const canPickAsset = type === "Kupno" || type === "Sprzedaż";
   useEffect(() => {
     if (!canPickAsset) return;
-    if (!query || query.trim().length < 2) { setSuggests([]); return; }
+    if (!query || query.trim().length < 2) {
+      setSuggests([]);
+      return;
+    }
     const id = setTimeout(async () => {
       try {
         const r = await fetch(`/api/lookup?q=${encodeURIComponent(query.trim())}`);
@@ -108,22 +116,31 @@ export default function TransactionForm({
   const gross = qtyN * pricePLN;
 
   const fee =
-    feeMode === "kwota" ? toNum(feeVal)
-      : feeMode === "%" ? (gross * toNum(feeVal)) / 100
+    feeMode === "kwota"
+      ? toNum(feeVal)
+      : feeMode === "%"
+      ? (gross * toNum(feeVal)) / 100
       : 0;
 
-  const totalBuy  = Math.max(0, gross + fee);
+  const totalBuy = Math.max(0, gross + fee);
   const totalSell = Math.max(0, gross - fee);
 
   const proposedTopUp =
-    type !== "Kupno" ? 0 :
-    topUpMode === "pełna" ? totalBuy :
-    topUpMode === "różnica" ? Math.max(0, totalBuy - balance) : 0;
+    type !== "Kupno"
+      ? 0
+      : topUpMode === "pełna"
+      ? totalBuy
+      : topUpMode === "różnica"
+      ? Math.max(0, totalBuy - balance)
+      : 0;
 
   useEffect(() => {
     if (type !== "Kupno") setTopUp("0");
     else if (topUpMode === "brak") setTopUp("0");
-    else setTopUp(String(Math.round((proposedTopUp + Number.EPSILON) * 100) / 100));
+    else
+      setTopUp(
+        String(Math.round((proposedTopUp + Number.EPSILON) * 100) / 100)
+      );
   }, [type, topUpMode, proposedTopUp]);
 
   /* ==== weryfikacja ceny z /api/quote ==== */
@@ -157,14 +174,22 @@ export default function TransactionForm({
     if (type === "Wpłata") {
       const v = toNum(price);
       if (v <= 0) return setError("Podaj dodatnią kwotę wpłaty.");
-      await addDeposit(uid, portfolioId ?? null, { amount: v, date, note: "Wpłata gotówki" });  // ⬅️ portfolioId
+      await addDeposit(uid, portfolioId ?? null, {
+        amount: v,
+        date,
+        note: "Wpłata gotówki",
+      }); // ⬅️ portfolioId
       return finish();
     }
 
     if (type === "Wypłata") {
       const v = toNum(price);
       if (v <= 0) return setError("Podaj dodatnią kwotę wypłaty.");
-      await addWithdrawal(uid, portfolioId ?? null, { amount: v, date, note: "Wypłata gotówki" }); // ⬅️ portfolioId
+      await addWithdrawal(uid, portfolioId ?? null, {
+        amount: v,
+        date,
+        note: "Wypłata gotówki",
+      }); // ⬅️ portfolioId
       return finish();
     }
 
@@ -183,7 +208,10 @@ export default function TransactionForm({
     // jeśli weekend/święto albo cena niepodana/≤0 — spróbuj pobrać ostatni close ≤ effDate
     if (isWeekend(date) || !Number.isFinite(priceN) || priceN <= 0) {
       try {
-        const snap = await snapToLastClose({ pair: { yahoo: pair?.yahoo }, targetDate: effDate });
+        const snap = await snapToLastClose({
+          pair: { yahoo: pair?.yahoo },
+          targetDate: effDate,
+        });
         if (snap && Number.isFinite(snap.price)) {
           effDate = snap.dateISO || effDate;
           effPricePLN = Number(snap.price);
@@ -202,49 +230,83 @@ export default function TransactionForm({
     // przelicz fee i totals na podstawie EFEKTYWNEJ ceny
     const effGross = qtyN * effPricePLN;
     const effFee =
-      feeMode === "kwota" ? toNum(feeVal)
-        : feeMode === "%" ? (effGross * toNum(feeVal)) / 100
+      feeMode === "kwota"
+        ? toNum(feeVal)
+        : feeMode === "%"
+        ? (effGross * toNum(feeVal)) / 100
         : 0;
-    const effTotalBuy  = Math.max(0, effGross + effFee);
+    const effTotalBuy = Math.max(0, effGross + effFee);
     const effTotalSell = Math.max(0, effGross - effFee);
 
     if (type === "Kupno") {
       if (topUpMode === "brak" && balance < effTotalBuy) {
         return setError(
           `Brak środków: potrzeba ${fmtPLN(effTotalBuy)}, saldo ${fmtPLN(balance)}. ` +
-          `Wybierz „pełna kwota zakupu” lub „tylko różnica”.`
+            `Wybierz „pełna kwota zakupu” lub „tylko różnica”.`
         );
       }
 
       const topUpVal =
-        topUpMode === "pełna" ? effTotalBuy :
-        topUpMode === "różnica" ? Math.max(0, effTotalBuy - balance) :
-        toNum(topUp);
+        topUpMode === "pełna"
+          ? effTotalBuy
+          : topUpMode === "różnica"
+          ? Math.max(0, effTotalBuy - balance)
+          : toNum(topUp);
 
       await addHolding(
         uid,
-        portfolioId ?? null,  // ⬅️ KLUCZ: zapis do bieżącego portfela
+        portfolioId ?? null, // ⬅️ KLUCZ: zapis do bieżącego portfela
         {
           name: pair?.name || pair?.yahoo || query || "—",
           pair: { yahoo: pair?.yahoo, currency: ccy },
           shares: qtyN,
-          buyPrice: effPricePLN,   // ⬅️ UŻYJ EFEKTYWNEJ CENY (snapowanej)
-          buyDate: effDate,        // ⬅️ UŻYJ EFEKTYWNEJ DATY (dzień notowania)
+          buyPrice: effPricePLN, // ⬅️ UŻYJ EFEKTYWNEJ CENY (snapowanej)
+          buyDate: effDate, // ⬅️ UŻYJ EFEKTYWNEJ DATY (dzień notowania)
         },
         { autoTopUp: false, topUp: topUpVal }
       );
+
+      // ✅ NOWE: zapis do ledgera BUY (nie blokuje transakcji, jeśli coś pójdzie nie tak)
+      try {
+        await addTrade(uid, portfolioId ?? null, {
+          side: "BUY",
+          symbol: pair?.yahoo,
+          qty: qtyN,
+          pricePLN: effPricePLN,
+          feePLN: effFee,
+          cashImpactPLN: -effTotalBuy,
+          date: effDate,
+          source: "TransactionForm",
+        });
+      } catch {}
 
       return finish();
     }
 
     if (type === "Sprzedaż") {
-      await sellPosition(uid, portfolioId ?? null, {  // ⬅️ portfolioId
+      await sellPosition(uid, portfolioId ?? null, {
+        // ⬅️ portfolioId
         yahoo: pair?.yahoo,
         qty: qtyN,
         price: effPricePLN, // ⬅️ EFEKTYWNA CENA
-        date: effDate,      // ⬅️ EFEKTYWNA DATA
+        date: effDate, // ⬅️ EFEKTYWNA DATA
         note: "Sprzedaż",
       });
+
+      // ✅ NOWE: zapis do ledgera SELL (nie blokuje transakcji, jeśli coś pójdzie nie tak)
+      try {
+        await addTrade(uid, portfolioId ?? null, {
+          side: "SELL",
+          symbol: pair?.yahoo,
+          qty: qtyN,
+          pricePLN: effPricePLN,
+          feePLN: effFee,
+          cashImpactPLN: effTotalSell,
+          date: effDate,
+          source: "TransactionForm",
+        });
+      } catch {}
+
       return finish();
     }
     // ⬆⬆⬆ KONIEC DODANEGO BLOKU
@@ -262,7 +324,11 @@ export default function TransactionForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="muted text-sm">Typ</label>
-          <select className="input w-full" value={type} onChange={(e) => setType(e.target.value)}>
+          <select
+            className="input w-full"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+          >
             <option>Kupno</option>
             <option>Sprzedaż</option>
             <option>Wpłata</option>
@@ -272,7 +338,12 @@ export default function TransactionForm({
         <div>
           <label className="muted text-sm">Data</label>
           <div className="relative">
-            <input type="date" className="input w-full" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              className="input w-full"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-400"></span>
           </div>
         </div>
@@ -288,7 +359,10 @@ export default function TransactionForm({
               placeholder="Wyszukaj spółkę lub ETF (np. PZU, Orlen, TSLA...)"
               value={pair?.display || query}
               onFocus={() => setShowSug(true)}
-              onChange={(e) => { setPair(null); setQuery(e.target.value); }}
+              onChange={(e) => {
+                setPair(null);
+                setQuery(e.target.value);
+              }}
             />
             <button
               type="button"
@@ -323,7 +397,9 @@ export default function TransactionForm({
                   type="button"
                 >
                   <div className="font-medium">{s.name}</div>
-                  <div className="text-xs text-zinc-400">{s.symbol} · {s.exchange}</div>
+                  <div className="text-xs text-zinc-400">
+                    {s.symbol} · {s.exchange}
+                  </div>
                 </button>
               ))}
             </div>
@@ -332,16 +408,28 @@ export default function TransactionForm({
       )}
 
       {/* ilość / cena / waluta lub kwota */}
-      {(type === "Kupno" || type === "Sprzedaż") ? (
+      {type === "Kupno" || type === "Sprzedaż" ? (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="muted text-sm">Ilość</label>
-            <input className="input w-full" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="np. 10" />
+            <input
+              className="input w-full"
+              inputMode="decimal"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+              placeholder="np. 10"
+            />
           </div>
           <div className="sm:col-span-2 grid grid-cols-[1fr_auto_auto] gap-2">
             <div>
               <label className="muted text-sm">Cena</label>
-              <input className="input w-full" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="np. 123,45" />
+              <input
+                className="input w-full"
+                inputMode="decimal"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="np. 123,45"
+              />
             </div>
             <div>
               <label className="muted text-sm">Waluta</label>
@@ -352,14 +440,25 @@ export default function TransactionForm({
               </select>
             </div>
             <div className="self-end text-xs text-zinc-400 pb-1">
-              {ccy !== "PLN" && <>Kurs {ccy}/PLN ≈ <span className="text-zinc-200">{fx.toFixed(4)}</span></>}
+              {ccy !== "PLN" && (
+                <>
+                  Kurs {ccy}/PLN ≈{" "}
+                  <span className="text-zinc-200">{fx.toFixed(4)}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
       ) : (
         <div>
           <label className="muted text-sm">Kwota (PLN)</label>
-          <input className="input w-full" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="np. 1000" />
+          <input
+            className="input w-full"
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="np. 1000"
+          />
         </div>
       )}
 
@@ -376,25 +475,48 @@ export default function TransactionForm({
               <div className="text-xs text-zinc-400">Prowizja</div>
               <div className="flex items-center gap-4 mt-1">
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={feeMode==="brak"} onChange={()=>setFeeMode("brak")} /> brak
+                  <input
+                    type="radio"
+                    checked={feeMode === "brak"}
+                    onChange={() => setFeeMode("brak")}
+                  />{" "}
+                  brak
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={feeMode==="kwota"} onChange={()=>setFeeMode("kwota")} /> kwota
+                  <input
+                    type="radio"
+                    checked={feeMode === "kwota"}
+                    onChange={() => setFeeMode("kwota")}
+                  />{" "}
+                  kwota
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={feeMode==="%" } onChange={()=>setFeeMode("%")} /> %
+                  <input
+                    type="radio"
+                    checked={feeMode === "%"}
+                    onChange={() => setFeeMode("%")}
+                  />{" "}
+                  %
                 </label>
               </div>
               {(feeMode === "kwota" || feeMode === "%") && (
-                <input className="input mt-2" inputMode="decimal"
-                       placeholder={feeMode==="kwota" ? "np. 5,00" : "np. 0,39"}
-                       value={feeVal} onChange={(e)=>setFeeVal(e.target.value)} />
+                <input
+                  className="input mt-2"
+                  inputMode="decimal"
+                  placeholder={feeMode === "kwota" ? "np. 5,00" : "np. 0,39"}
+                  value={feeVal}
+                  onChange={(e) => setFeeVal(e.target.value)}
+                />
               )}
             </div>
 
             <div className="rounded-lg border border-zinc-700 p-3">
-              <div className="text-xs text-zinc-400">{type === "Kupno" ? "Razem do zapłaty" : "Wpływ netto"}</div>
-              <div className="font-semibold">{type === "Kupno" ? fmtPLN(totalBuy) : fmtPLN(totalSell)}</div>
+              <div className="text-xs text-zinc-400">
+                {type === "Kupno" ? "Razem do zapłaty" : "Wpływ netto"}
+              </div>
+              <div className="font-semibold">
+                {type === "Kupno" ? fmtPLN(totalBuy) : fmtPLN(totalSell)}
+              </div>
             </div>
           </div>
 
@@ -403,23 +525,46 @@ export default function TransactionForm({
               <div className="text-sm text-zinc-400 mb-2">Doładowanie konta</div>
               <div className="flex flex-wrap items-center gap-6">
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={topUpMode==="brak"} onChange={()=>setTopUpMode("brak")} /> brak
+                  <input
+                    type="radio"
+                    checked={topUpMode === "brak"}
+                    onChange={() => setTopUpMode("brak")}
+                  />{" "}
+                  brak
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={topUpMode==="pełna"} onChange={()=>setTopUpMode("pełna")} /> pełna kwota zakupu
+                  <input
+                    type="radio"
+                    checked={topUpMode === "pełna"}
+                    onChange={() => setTopUpMode("pełna")}
+                  />{" "}
+                  pełna kwota zakupu
                 </label>
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" checked={topUpMode==="różnica"} onChange={()=>setTopUpMode("różnica")} /> tylko różnica
+                  <input
+                    type="radio"
+                    checked={topUpMode === "różnica"}
+                    onChange={() => setTopUpMode("różnica")}
+                  />{" "}
+                  tylko różnica
                 </label>
               </div>
 
               <div className="grid grid-cols-[1fr_auto] items-end gap-3 mt-2">
                 <div>
-                  <div className="text-sm text-zinc-400 mb-1">Kwota doładowania (PLN)</div>
-                  <input className="input w-full" inputMode="decimal" value={topUp} onChange={(e)=>setTopUp(e.target.value)} />
+                  <div className="text-sm text-zinc-400 mb-1">
+                    Kwota doładowania (PLN)
+                  </div>
+                  <input
+                    className="input w-full"
+                    inputMode="decimal"
+                    value={topUp}
+                    onChange={(e) => setTopUp(e.target.value)}
+                  />
                 </div>
                 <div className="text-sm text-zinc-400">
-                  Proponowane: <span className="text-zinc-200">{fmtPLN(proposedTopUp)}</span>
+                  Proponowane:{" "}
+                  <span className="text-zinc-200">{fmtPLN(proposedTopUp)}</span>
                 </div>
               </div>
             </div>
@@ -436,10 +581,17 @@ export default function TransactionForm({
 
       {/* akcje */}
       <div className="flex items-center justify-between gap-2 pt-2">
-        <button type="button" className="px-3 py-2 rounded-lg border border-zinc-700 hover:bg-zinc-800" onClick={finish}>
+        <button
+          type="button"
+          className="px-3 py-2 rounded-lg border border-zinc-700 hover:bg-zinc-800"
+          onClick={finish}
+        >
           Wyczyść / Zamknij
         </button>
-        <button type="submit" className="px-4 py-2 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-400">
+        <button
+          type="submit"
+          className="px-4 py-2 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-400"
+        >
           Zapisz transakcję
         </button>
       </div>

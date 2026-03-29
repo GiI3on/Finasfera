@@ -24,11 +24,11 @@ const CookieBanner = dynamic(
   { ssr: false }
 );
 
-// 🔹 SEO + Open Graph + favicon
+// 🔹 ZAKTUALIZOWANE SEO + Open Graph + Weryfikacja
 export const metadata = {
-  title: "Finasfera — edukacyjna platforma inwestycyjna i kalkulator FIRE",
+  title: "Finasfera — Kalkulator FIRE i tracker portfela",
   description:
-    "Finasfera.pl to niezależny projekt edukacyjny o inwestowaniu i finansowej niezależności. Kalkulator FIRE, portfel inwestycyjny, forum i narzędzia dla inwestorów.",
+    "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, porównaj z benchmarkami, zaplanuj emeryturę.",
   keywords: [
     "Finasfera",
     "inwestowanie",
@@ -39,24 +39,40 @@ export const metadata = {
     "forum finansowe",
   ],
   openGraph: {
-    title: "Finasfera — Twoja droga do finansowej niezależności",
+    title: "Finasfera — Kalkulator FIRE i tracker portfela",
     description:
-      "Projekt edukacyjny o inwestowaniu i metodologii FIRE. Kalkulator FIRE, portfel inwestycyjny, forum społeczności.",
+      "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, porównaj z benchmarkami, zaplanuj emeryturę.",
     url: "https://finasfera.pl",
     siteName: "Finasfera",
     locale: "pl_PL",
     type: "website",
+    images: [
+      {
+        url: "https://finasfera.pl/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Finasfera.pl",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Finasfera — edukacja inwestycyjna i kalkulator FIRE",
-    description:
-      "Finasfera.pl to narzędzia, kalkulatory i społeczność osób dążących do niezależności finansowej.",
+    title: "Finasfera — Kalkulator FIRE i tracker portfela",
+    description: "Oblicz kiedy osiągniesz wolność finansową.",
+    images: ["https://finasfera.pl/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
   themeColor: "#facc15",
   icons: {
     icon: "/favicon.ico",
     apple: "/icon-192.png",
+  },
+  // 🔹 Weryfikacja Google Search Console (Prefiks URL)
+  verification: {
+    google: "Lo2tpbGKiA4R2gW4N_UEpuhTurpkbyVfDiPQbfIEuUo",
   },
 };
 
@@ -65,12 +81,6 @@ export default function RootLayout({ children }) {
     <html lang="pl">
       <body className="min-h-screen bg-zinc-950 text-zinc-100">
         <AuthProvider>
-          {/* === Pasek informacyjny o wersji beta === */}
-          <div className="bg-yellow-500 text-black text-sm text-center py-2 font-medium">
-            Finasfera.pl — wersja testowa (beta). Funkcjonalność może ulec
-            zmianie.
-          </div>
-
           <TopNav />
           {children}
         </AuthProvider>
@@ -101,7 +111,7 @@ export default function RootLayout({ children }) {
           <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between gap-4">
             <div>
               <p>
-                © 2025 Finasfera.pl — niezależny projekt edukacyjny o
+                © {new Date().getFullYear()} Finasfera.pl — niezależny projekt edukacyjny o
                 inwestowaniu i metodologii FIRE.
               </p>
               <p>
@@ -129,15 +139,11 @@ export default function RootLayout({ children }) {
               </a>
             </div>
           </div>
-          <p className="text-xs mt-4 text-zinc-500">
-            Uwaga: Finasfera.pl jest obecnie w fazie testowej (beta).
-            Funkcjonalność może ulec zmianie, a dane prezentowane w
-            kalkulatorach i statystykach mają charakter orientacyjny. W
-            przyszłości planowane jest wprowadzenie wersji komercyjnej.
+          <p className="text-xs mt-4 text-zinc-500 max-w-5xl mx-auto px-4">
+            Stale rozwijamy Finasferę — daj znać co chcesz zobaczyć. Dane prezentowane w
+            kalkulatorach i statystykach mają charakter wyłącznie edukacyjny i orientacyjny.
           </p>
         </footer>
-
-        {/* …Twoje skrypty schema.org – bez zmian… */}
       </body>
     </html>
   );
