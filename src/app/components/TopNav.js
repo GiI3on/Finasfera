@@ -12,6 +12,7 @@ const links = [
   { href: "/moj-portfel", label: "Śledzenie Akcji" },
   { href: "/statystyki",  label: "Statystyki" },
   { href: "/forum", label: "Forum" },
+  { href: "/blog", label: "Edukacja" }, // ⬅️ DODANO ZAKŁADKĘ BLOGA
 ];
 
 function isActive(pathname, href) {
@@ -150,12 +151,10 @@ export default function TopNav() {
         >
           {open ? (
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-               {/* ⬇️ TUTAJ BYŁ BŁĄD: strokeJoin -> strokeLinejoin */}
                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
              </svg>
           ) : (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              {/* ⬇️ TUTAJ BYŁ BŁĄD: strokeJoin -> strokeLinejoin */}
               <path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           )}
@@ -174,8 +173,8 @@ export default function TopNav() {
                   href={l.href}
                   aria-current={active ? "page" : undefined}
                   className={`px-4 py-3 rounded-xl text-base font-medium transition-colors ${
-                    active 
-                      ? "bg-yellow-400/10 text-yellow-400" 
+                    active
+                      ? "bg-yellow-400/10 text-yellow-400"
                       : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100"
                   }`}
                   onClick={() => setOpen(false)}
