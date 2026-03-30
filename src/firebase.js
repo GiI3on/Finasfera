@@ -1,6 +1,6 @@
-// src/lib/firebase.js
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth"; // <--- Musi być ten import
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -12,10 +12,10 @@ const firebaseConfig = {
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const db = getFirestore(app);
 
-// ——— DIAG: NA PEWNO WIDOCZNE W PRZEGLĄDARCE ———
+export const db = getFirestore(app);
+export const auth = getAuth(app); // <--- Musi być EXPORT
+
 if (typeof window !== "undefined") {
-  // pokaże w DevTools → Console jaki projekt jest używany przez tę stronę
-  console.log("[FB] projectId =", firebaseConfig.projectId);
+  console.log("[FB] Inicjalizacja zakończona dla projektu:", firebaseConfig.projectId);
 }

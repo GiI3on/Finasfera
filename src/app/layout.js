@@ -1,7 +1,7 @@
 import "./globals.css";
 import dynamic from "next/dynamic";
 
-// ⬇⬇ KLUCZ: bierzemy default ALBO nazwany export
+// ⬇⬇ Importy dynamiczne komponentów klienckich
 const AuthProvider = dynamic(
   () =>
     import("./components/AuthProvider").then(
@@ -15,7 +15,6 @@ const TopNav = dynamic(
   { ssr: false }
 );
 
-// Cookie banner (bez SSR)
 const CookieBanner = dynamic(
   () =>
     import("./components/CookieBanner").then(
@@ -24,7 +23,13 @@ const CookieBanner = dynamic(
   { ssr: false }
 );
 
-// 🔹 ZAKTUALIZOWANE SEO + Open Graph + Weryfikacja
+// --- NOWOŚĆ: Twój Asystent AI ---
+const ChatAI = dynamic(
+  () => import("./components/ChatAI").then((m) => m.default ?? m.ChatAI),
+  { ssr: false }
+);
+
+// 🔹 SEO + Open Graph + Weryfikacja
 export const metadata = {
   title: "Finasfera — Kalkulator FIRE i tracker portfela",
   description:
@@ -70,7 +75,6 @@ export const metadata = {
     icon: "/favicon.ico",
     apple: "/icon-192.png",
   },
-  // 🔹 Weryfikacja Google Search Console (Prefiks URL)
   verification: {
     google: "Lo2tpbGKiA4R2gW4N_UEpuhTurpkbyVfDiPQbfIEuUo",
   },
@@ -82,10 +86,15 @@ export default function RootLayout({ children }) {
       <body className="min-h-screen bg-zinc-950 text-zinc-100">
         <AuthProvider>
           <TopNav />
-          {children}
+          <main>
+            {children}
+          </main>
+          
+          {/* === Twój pływający Asystent AI === */}
+          <ChatAI />
         </AuthProvider>
 
-        {/* === Baner cookies (pokazuje się raz) === */}
+        {/* === Baner cookies === */}
         <CookieBanner />
 
         {/* === Google Analytics (GA4) === */}

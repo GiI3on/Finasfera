@@ -11,6 +11,8 @@
     "validate:popular": "node ./scripts/validate-popular.mjs"
   },
   "dependencies": {
+    "@google/genai": "^1.47.0",
+    "@google/generative-ai": "^0.24.1",
     "@types/node": "^24.2.1",
     "@types/react": "^19.1.9",
     "@upstash/ratelimit": "^2.0.6",
