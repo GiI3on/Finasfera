@@ -11,8 +11,9 @@ const links = [
   { href: "/fire-path", label: "Etapy Wolności" },
   { href: "/moj-portfel", label: "Śledzenie Akcji" },
   { href: "/statystyki",  label: "Statystyki" },
+  { href: "/skaner-ai", label: "Skaner AI" }, // ⬅️ DODANO TUTAJ
   { href: "/forum", label: "Forum" },
-  { href: "/blog", label: "Edukacja" }, // ⬅️ DODANO ZAKŁADKĘ BLOGA
+  { href: "/blog", label: "Edukacja" },
 ];
 
 function isActive(pathname, href) {

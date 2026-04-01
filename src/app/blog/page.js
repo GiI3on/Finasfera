@@ -6,10 +6,17 @@ export const metadata = {
   description: "Praktyczne poradniki o wolności finansowej (FIRE), inwestowaniu w Polsce i optymalizacji podatkowej.",
 };
 
-// Tutaj będziemy dodawać kolejne artykuły w przyszłości
+// Tablica ze wszystkimi artykułami
 const articles = [
   {
-    slug: "emerytura-w-polsce", // <--- TUTAJ KRÓTSZA NAZWA
+    slug: "jak-zaczac-inwestowac", // <--- TUTAJ NAZWA FOLDERU Z NOWYM ARTYKUŁEM
+    title: "Jak zacząć inwestować w Polsce: Przewodnik z kapitałem od 500 zł",
+    excerpt: "Prawda jest taka, że dzisiaj próg wejścia w świat finansów jest najniższy w historii. Dowiedz się, jak wykorzystać procent składany, ETF-y i konta IKE/IKZE do budowania kapitału.",
+    date: "Kwiecień 2026",
+    readTime: "8 min czytania",
+  },
+  {
+    slug: "emerytura-w-polsce", 
     title: "Ile musisz mieć na koncie żeby przejść na emeryturę w Polsce w 2026?",
     excerpt: "Poznaj regułę 4% dostosowaną do polskich realiów. Dowiedz się, jak obliczyć swój FIRE number i zaplanować wcześniejszą emeryturę krok po kroku.",
     date: "29 Marca 2026",

@@ -1,9 +1,8 @@
-// File: src/app/hooks/usePortfolioAnalyticsData.js
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../components/AuthProvider';
-import { listenHoldings } from '../lib/portfolioStore';
+import { listenHoldings } from '../../lib/portfolioStore';
 
 // --- helpers z Twojej strony portfela ---
 function collectAllDays(seriesMap) {
@@ -90,26 +89,30 @@ function makeGroups(holdings, quotes, series) {
 }
 
 // --- główny hook ---
-export function usePortfolioAnalyticsData() {
+export function usePortfolioAnalyticsData(portfolioId = null) {
   const { user } = useAuth();
   const [fsHoldings, setFsHoldings] = useState(null);
   const [quotes, setQuotes] = useState({});
   const [series, setSeries] = useState({});
+  
+  // Flaga potrzebna dla Skanera AI
+  const [isSyncingPrices, setIsSyncingPrices] = useState(false);
   const loadingUser = user === undefined;
 
   // 1) holdings z Firestore
   useEffect(() => {
     if (!user) { setFsHoldings(null); return; }
-    const unsub = listenHoldings(user.uid, (items) => setFsHoldings(items));
+    const unsub = listenHoldings(user.uid, portfolioId, (items) => setFsHoldings(items));
     return () => unsub?.();
-  }, [user]);
+  }, [user, portfolioId]);
 
   const holdings = fsHoldings ?? [];
 
-  // 2) notowania bieżące
+  // 2) notowania bieżące (TWÓJ ORYGINALNY, DZIAŁAJĄCY KOD)
   useEffect(() => {
     (async () => {
       if (!holdings?.length) { setQuotes({}); return; }
+      setIsSyncingPrices(true);
       const entries = await Promise.all(
         holdings.map(async (h) => {
           try {
@@ -130,10 +133,11 @@ export function usePortfolioAnalyticsData() {
         })
       );
       setQuotes(Object.fromEntries(entries));
+      setIsSyncingPrices(false);
     })();
   }, [JSON.stringify(holdings?.map?.((h) => ({ id: h.id, pair: h.pair })) || [])]);
 
-  // 3) historia (bierzemy YTD dziennie – wystarczy do panelu; chcesz MAX, zmień range/interval)
+  // 3) historia (TWÓJ ORYGINALNY, DZIAŁAJĄCY KOD)
   useEffect(() => {
     (async () => {
       if (!holdings?.length) { setSeries({}); return; }
@@ -165,11 +169,10 @@ export function usePortfolioAnalyticsData() {
     })();
   }, [JSON.stringify(holdings?.map?.((h) => ({ id: h.id, pair: h.pair, shares: h.shares })) || [])]);
 
-  // 4) NAV portfela (sumujemy po dniach)
+  // 4) NAV portfela
   const navSeries = useMemo(() => {
     const days = collectAllDays(series);
     if (!days.length) return [];
-    // sprawdźmy długości historii – zakładamy, że normalizeSeriesMap wyrównał
     return days.map((d, idx) => {
       let total = 0;
       for (const id of Object.keys(series)) {
@@ -202,8 +205,7 @@ export function usePortfolioAnalyticsData() {
     [navSeries, holdingsForAnalytics]
   );
 
-  const loading =
-    loadingUser || (user && fsHoldings === null); // ładowanie holdings po zalogowaniu
+  const loading = loadingUser || (user && fsHoldings === null);
 
-  return { loading, data };
+  return { loading, isSyncingPrices, data };
 }

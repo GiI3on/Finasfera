@@ -52,12 +52,10 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
           {groups.map((g) => {
              const open = expanded.has(g.key);
              const gainUp = g.gain >= 0;
-             // Na mobile używamy prostszych kolorów dla zysku/straty
              const gainColor = gainUp ? "text-emerald-400" : "text-red-400";
 
              return (
                <div key={g.key} className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl p-4">
-                 {/* Nagłówek Karty: Logo + Nazwa + Cena aktualna */}
                  <div className="flex items-start justify-between mb-3">
                    <div className="flex items-center gap-3">
                      <CompanyLogo symbol={g.pair?.yahoo} name={g.name} size={32} className="shrink-0 rounded-md" />
@@ -78,7 +76,6 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                    </div>
                  </div>
 
-                 {/* Siatka danych (Grid) */}
                  <div className="grid grid-cols-2 gap-3 py-3 border-t border-zinc-800/50">
                     <div>
                         <span className="text-xs text-zinc-500 block">Wartość</span>
@@ -100,7 +97,6 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                     </div>
                  </div>
 
-                 {/* Przycisk rozwijania szczegółów */}
                  <button 
                     onClick={() => onToggle?.(g.key)}
                     className="w-full mt-2 py-2 text-xs font-medium text-zinc-400 bg-zinc-900 hover:bg-zinc-800 rounded-lg border border-zinc-800/50 transition-colors flex items-center justify-center gap-1"
@@ -109,25 +105,33 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                     <span className={`transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
                  </button>
 
-                 {/* Szczegóły transakcji (Mobile) */}
                  {open && (
                    <div className="mt-3 space-y-2 pl-2 border-l-2 border-zinc-800">
                      {g.lots.map((lot) => (
-                       <div key={lot.id} className="bg-black/20 p-2 rounded text-sm flex justify-between items-center">
-                          <div>
-                            <div className="text-zinc-300">
-                                {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
+                       <div key={lot.id} className="bg-black/20 p-2 rounded text-sm flex flex-col gap-2">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="text-zinc-300">
+                                  {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
+                              </div>
+                              <div className="text-xs text-zinc-500">
+                                  {lot.shares} szt. po {fmtPLN(lot.buyPrice || 0)}
+                              </div>
                             </div>
-                            <div className="text-xs text-zinc-500">
-                                {lot.shares} szt. po {fmtPLN(lot.buyPrice || 0)}
-                            </div>
+                            <button
+                              className="text-xs text-yellow-500/80 hover:text-yellow-400 px-2 py-1"
+                              onClick={() => onOpenFix?.(lot, g)}
+                            >
+                              Edytuj
+                            </button>
                           </div>
-                          <button
-                            className="text-xs text-yellow-500/80 hover:text-yellow-400 px-2 py-1"
-                            onClick={() => onOpenFix?.(lot, g)}
-                          >
-                            Edytuj
-                          </button>
+                          
+                          {lot.note && (
+                            <div className="mt-1 p-2 rounded bg-zinc-900/50 border border-zinc-800/50 text-[11px] text-zinc-400 italic">
+                              <span className="text-zinc-500 mr-1 block mb-0.5 not-italic font-semibold">Teza inwestycyjna:</span>
+                              {lot.note}
+                            </div>
+                          )}
                        </div>
                      ))}
                    </div>
@@ -137,8 +141,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
           })}
         </div>
 
-
-        {/* --- WIDOK DESKTOP (TABELA) - widoczny tylko od md w górę --- */}
+        {/* --- WIDOK DESKTOP (TABELA) --- */}
         <div className="hidden md:block rounded-xl ring-1 ring-zinc-800/60 overflow-hidden">
           <table className="w-full text-base table-fixed">
             <colgroup>
@@ -212,7 +215,6 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                         </span>
                       </td>
 
-                      {/* ✅ USUNIĘTO "Szczegóły/Zwiń" z prawej strony (zostaje tylko strzałka po lewej) */}
                       <td className="py-3 pr-2 text-right"></td>
                     </tr>
 
@@ -241,29 +243,34 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                               </thead>
                               <tbody>
                                 {g.lots.map((lot, i) => (
-                                  <tr
-                                    key={lot.id}
-                                    className={`border-t border-zinc-800/40 ${i % 2 === 1 ? "bg-zinc-900/30" : ""}`}
-                                  >
-                                    <td className="py-2">
-                                      {lot.buyDate
-                                        ? new Date(lot.buyDate).toLocaleDateString("pl-PL")
-                                        : "—"}
-                                    </td>
-                                    <td className="py-2 text-right whitespace-nowrap tabular-nums">{fmtPLN(lot.buyPrice || 0)}</td>
-                                    <td className="py-2 text-right whitespace-nowrap tabular-nums">{lot.shares}</td>
-                                    <td className="py-2 text-right whitespace-nowrap tabular-nums">
-                                      {fmtPLN((Number(lot.buyPrice) || 0) * (Number(lot.shares) || 0))}
-                                    </td>
-                                    <td className="py-2 text-right">
-                                      <button
-                                        className="text-yellow-300 hover:text-yellow-200"
-                                        onClick={() => onOpenFix?.(lot, g)}
-                                      >
-                                        Edytuj
-                                      </button>
-                                    </td>
-                                  </tr>
+                                  <Fragment key={lot.id}>
+                                    <tr className={`border-t border-zinc-800/40 ${i % 2 === 1 ? "bg-zinc-900/30" : ""}`}>
+                                      <td className="py-2">
+                                        {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
+                                      </td>
+                                      <td className="py-2 text-right whitespace-nowrap tabular-nums">{fmtPLN(lot.buyPrice || 0)}</td>
+                                      <td className="py-2 text-right whitespace-nowrap tabular-nums">{lot.shares}</td>
+                                      <td className="py-2 text-right whitespace-nowrap tabular-nums">
+                                        {fmtPLN((Number(lot.buyPrice) || 0) * (Number(lot.shares) || 0))}
+                                      </td>
+                                      <td className="py-2 text-right">
+                                        <button
+                                          className="text-yellow-300 hover:text-yellow-200"
+                                          onClick={() => onOpenFix?.(lot, g)}
+                                        >
+                                          Edytuj
+                                        </button>
+                                      </td>
+                                    </tr>
+                                    {lot.note && (
+                                      <tr className={`${i % 2 === 1 ? "bg-zinc-900/30" : ""}`}>
+                                        <td colSpan={5} className="py-2 px-4 text-[13px] text-zinc-400 italic border-t border-zinc-800/20 bg-black/20">
+                                          <span className="text-zinc-500 mr-2 not-italic font-semibold">Teza:</span>
+                                          {lot.note}
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
                                 ))}
                               </tbody>
                             </table>

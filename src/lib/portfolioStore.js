@@ -1,4 +1,4 @@
-import { db } from "../firebase";
+import { db } from './firebase'; 
 import {
   addDoc,
   collection,
@@ -26,10 +26,6 @@ function isoLocal(d = new Date()) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/* =========================================================
-   ✅ FIX: zawsze zamień portfolioId na string (lub null)
-   (żeby nie robiło [object Object])
-   ========================================================= */
 function normPortfolioId(x) {
   if (x == null) return null;
   if (typeof x === "string") {
@@ -46,9 +42,6 @@ function normPortfolioId(x) {
   return null;
 }
 
-/* =========================================================
-   ŚCIEŻKI: holdings & cashflows (główny portfel vs. wiele portfeli)
-   ========================================================= */
 function holdingsCol(uid, portfolioId = null) {
   const pid = normPortfolioId(portfolioId);
   return pid
@@ -72,21 +65,12 @@ function cashflowsCol(uid, portfolioId = null) {
    HOLDINGS (pozycje)
    ========================================================= */
 
-/**
- * Nasłuch pozycji – z fallbackiem:
- *  1) standard: users/{uid}/(portfolios/{id}/)holdings
- *  2) fallback: top-level 'portfolio' filtrowane po userId (+ opcjonalnie portfolioId)
- *     – mapuje pola symbol/shares/buyPrice/buyDate do oczekiwanej struktury
- */
 export function listenHoldings(uid, a, b) {
   if (!uid) return () => {};
 
   let portfolioId = null;
   let cb = null;
 
-  // ✅ FIX: obsłuż oba warianty:
-  // listenHoldings(uid, cb)
-  // listenHoldings(uid, portfolioId (string/null/obj), cb)
   if (typeof a === "function") {
     cb = a;
   } else if (typeof b === "function") {
@@ -100,7 +84,6 @@ export function listenHoldings(uid, a, b) {
     if (typeof cb === "function") cb(rows);
   };
 
-  // 1) główny listener: users/{uid}/.../holdings
   const qCol = holdingsCol(uid, portfolioId || null);
   const q = query(qCol, orderBy("buyDate", "asc"));
 
@@ -111,7 +94,6 @@ export function listenHoldings(uid, a, b) {
     if (fallbackAttached) return;
     fallbackAttached = true;
     try {
-      // 2) fallback: top-level 'portfolio' (Twoja istniejąca kolekcja)
       const topCol = collection(db, "portfolio");
       const wh = [where("userId", "==", uid)];
 
@@ -135,10 +117,11 @@ export function listenHoldings(uid, a, b) {
                 ? { yahoo: String(r.symbol).toUpperCase() }
                 : (r.pair || null),
               shares: Number(r.shares) || 0,
-              buyPrice: Number(r.buyPrice) || 0, // PLN
+              buyPrice: Number(r.buyPrice) || 0, 
               buyDate: r.buyDate || null,
               currency: r.currency || "PLN",
               prevClose: Number(r.prevClose) || 0,
+              note: r.note || null, // <--- DODANE (Pamiętnik)
             });
           });
           emit(mapped);
@@ -174,7 +157,6 @@ export function listenHoldings(uid, a, b) {
   };
 }
 
-/** Dodaj pozycję (auto-cashflow jeśli nie zablokowano) */
 export async function addHolding(uid, a, b, c) {
   if (!uid) throw new Error("addHolding: missing uid");
 
@@ -182,8 +164,6 @@ export async function addHolding(uid, a, b, c) {
   let item = a;
   let opts = b || {};
 
-  // ✅ FIX: jeśli podano 3 argumenty i pierwszy wygląda jak portfolioId (string/null/obj)
-  // to traktujemy go jako portfolioId
   if (typeof c !== "undefined") {
     portfolioId = a || null;
     item = b;
@@ -191,11 +171,10 @@ export async function addHolding(uid, a, b, c) {
   }
 
   const shares = Number(item.shares) || 0;
-  const price = Number(item.buyPrice) || 0; // PLN
+  const price = Number(item.buyPrice) || 0; 
   const cost = shares * price;
   const fee = Number(opts.fee) || 0;
 
-  // wyznacz topUp + tryb
   const topUpExplicit = Number.isFinite(Number(opts.topUp)) ? Number(opts.topUp) : null;
   let topUp = 0;
   let topupMode = "none";
@@ -217,6 +196,7 @@ export async function addHolding(uid, a, b, c) {
     shares,
     buyPrice: price,
     buyDate: item.buyDate || isoLocal(new Date()),
+    note: item.note || null, // <--- DODANE (Pamiętnik inwestora zapisany do Firestore)
 
     ts: serverTimestamp(),
     meta: {
@@ -234,7 +214,6 @@ export async function addHolding(uid, a, b, c) {
 
   const ref = await addDoc(holdingsCol(uid, portfolioId), payload);
 
-  // Doładowanie (jeśli wybrane) — pominąć gdy noAutoCash
   if (topUp && !opts.noAutoCash) {
     await addCashflow(uid, portfolioId, {
       amount: topUp,
@@ -248,7 +227,6 @@ export async function addHolding(uid, a, b, c) {
     });
   }
 
-  // Wypływ za zakup (cost) — pominąć gdy noAutoCash
   if (cost && !opts.noAutoCash) {
     await addCashflow(uid, portfolioId, {
       amount: -cost,
@@ -266,7 +244,6 @@ export async function addHolding(uid, a, b, c) {
   return ref.id;
 }
 
-/** Usuń pozycję */
 export async function removeHolding(uid, a, b) {
   if (!uid) return;
   const hasPortfolioArg = typeof b !== "undefined";
@@ -276,12 +253,10 @@ export async function removeHolding(uid, a, b) {
   await deleteDoc(holdingDoc(uid, portfolioId, holdingId));
 }
 
-/** pomocniczo: ustaw liczbę akcji (merge) */
 async function setHoldingShares(uid, portfolioId, id, shares) {
   await setDoc(holdingDoc(uid, portfolioId, id), { shares: Number(shares) || 0 }, { merge: true });
 }
 
-// SPRZEDAŻ (FIFO po lotach)
 export async function sellPosition(uid, a, b) {
   let portfolioId = null;
   let p = a;
@@ -297,7 +272,7 @@ export async function sellPosition(uid, a, b) {
 
   const lots = snap.docs
     .map(d => ({ id: d.id, ...d.data() }))
-    .sort((x, y) => String(x.buyDate || "").localeCompare(String(y.buyDate || ""))); // FIFO
+    .sort((x, y) => String(x.buyDate || "").localeCompare(String(y.buyDate || ""))); 
 
   let remaining = sellQty;
 
@@ -315,7 +290,6 @@ export async function sellPosition(uid, a, b) {
     remaining -= use;
   }
 
-  // wpływ ze sprzedaży (pomiń, jeśli noAutoCash)
   const proceeds = sellQty * px;
   if (!p?.noAutoCash) {
     await addCashflow(uid, portfolioId, {
@@ -331,7 +305,6 @@ export async function sellPosition(uid, a, b) {
   }
 }
 
-// SPLIT (proporcjonalnie modyfikuje wszystkie loty symbolu)
 export async function applySplit(uid, a, b) {
   let portfolioId = null;
   let p = a;
@@ -365,16 +338,12 @@ export async function applySplit(uid, a, b) {
   });
 }
 
-/* =========================================================
-   CASHFLOWS (gotówka)
-   ========================================================= */
 export async function addCashflow(uid, a, b) {
   if (!uid) throw new Error("addCashflow: missing uid");
 
   let portfolioId = null;
   let p = a;
 
-  // ✅ FIX: jeśli podano 3 argumenty → (uid, portfolioId, payload)
   if (typeof b !== "undefined") {
     portfolioId = a || null;
     p = b;
@@ -408,7 +377,6 @@ export async function addCashOperation(uid, a, b) {
   return addCashflow(uid, portfolioId, { ...p, type });
 }
 
-/** Nasłuch salda gotówki */
 export function listenCashBalance(uid, a, b) {
   if (!uid) return () => {};
   let portfolioId = null;
@@ -436,7 +404,6 @@ export function listenCashBalance(uid, a, b) {
   });
 }
 
-/* ===== wygodne aliasy ===== */
 function _alias(type) {
   return (uid, a, b) => {
     const hasPortfolioArg = typeof b !== "undefined";
@@ -460,9 +427,6 @@ export const addFee        = (uid, a, b) => {
   return addCashflow(uid, portfolioId, { ...p, amount: -Math.abs(+p.amount || 0), type: "fee" });
 };
 
-/* =========================================================
-   COFNIJ IMPORT – kasowanie wszystkiego z danego batcha
-   ========================================================= */
 export async function removeBatchById(uid, portfolioId = null, batchId) {
   if (!uid) throw new Error("removeBatchById: missing uid");
   if (!batchId) throw new Error("removeBatchById: missing batchId");
@@ -492,11 +456,6 @@ export async function removeBatchById(uid, portfolioId = null, batchId) {
   await deleteLoop(cCol).catch(() => {});
 }
 
-/* =========================================================
-   TWR – agregacja cashflow + backfill brakujących 'buy' i 'deposit'
-   ========================================================= */
-
-/** ✅ Map dayISO -> suma kwot TYLKO Z ZEWNĘTRZNYCH CF */
 export function aggregateCashflowsForTwr(flows, startISO = null, endISO = null) {
   const EXTERNAL = new Set(["deposit", "withdraw", "correction", "manual"]);
   const m = new Map();
@@ -504,7 +463,7 @@ export function aggregateCashflowsForTwr(flows, startISO = null, endISO = null) 
     if (!f) continue;
     if (f.excludeFromTWR || f.storno) continue;
     const type = String(f.type || "").toLowerCase();
-    if (!EXTERNAL.has(type)) continue; // ignoruj buy/sell/dividend/fee
+    if (!EXTERNAL.has(type)) continue; 
     const d = String(f.date || "").slice(0, 10);
     if (!d) continue;
     if (startISO && d < startISO) continue;
@@ -514,10 +473,8 @@ export function aggregateCashflowsForTwr(flows, startISO = null, endISO = null) 
   }
   return m;
 }
-// alias zgodny ze starszym importem
 export const aggregateCashflowsForTWR = aggregateCashflowsForTwr;
 
-/** 🔧 Dopisuje brakujące 'buy' po imporcie (idempotentnie) */
 export async function backfillMissingBuyFlows(uid, portfolioId = null) {
   if (!uid) throw new Error("backfillMissingBuyFlows: missing uid");
 
@@ -537,7 +494,7 @@ export async function backfillMissingBuyFlows(uid, portfolioId = null) {
     const h = d.data();
     if (!h) return;
     const id   = d.id;
-    const paid = (Number(h?.meta?.grossPaid) || 0) * -1; // wydatek powinien być ujemny
+    const paid = (Number(h?.meta?.grossPaid) || 0) * -1; 
     const linkedSum = flowsByTxn.get(id) || 0;
     if (Math.abs(linkedSum - paid) > 0.005) {
       fixes.push({
@@ -558,14 +515,12 @@ export async function backfillMissingBuyFlows(uid, portfolioId = null) {
   return { fixed: fixes.length };
 }
 
-/** 🔧 NOWE: dopisuje brakujące 'deposit' pod zakup (idempotentnie, ważne dla TWR) */
 export async function backfillMissingDeposits(uid, portfolioId = null) {
   if (!uid) throw new Error("backfillMissingDeposits: missing uid");
 
   const hSnap = await getDocs(query(holdingsCol(uid, portfolioId)));
   const cSnap = await getDocs(query(cashflowsCol(uid, portfolioId)));
 
-  // ile DEPOSIT przypięto do danego zakupu
   const depositByTxn = new Map();
   cSnap.forEach((d) => {
     const row = d.data();
@@ -603,7 +558,6 @@ export async function backfillMissingDeposits(uid, portfolioId = null) {
   return { fixed: fixes.length };
 }
 
-/** 🔁 Automatyczny backfill – uruchamiany raz na portfel (znaczniki w Firestore) */
 export async function autoBackfillBuyFlowsIfNeeded(uid, portfolioId = null) {
   if (!uid) return { skipped: true };
   const key = normPortfolioId(portfolioId) || "__main__";
@@ -638,11 +592,6 @@ export async function autoBackfillDepositsIfNeeded(uid, portfolioId = null) {
   return res;
 }
 
-/* =========================================================
-   ⭐ NOWE: czyszczenie portfela głównego i pełne kasowanie portfela
-   ========================================================= */
-
-/** wewnętrzne: paginowane czyszczenie dowolnej kolekcji */
 async function _deleteCollectionAll(colRef) {
   let last = null;
   for (;;) {
@@ -661,17 +610,14 @@ async function _deleteCollectionAll(colRef) {
   }
 }
 
-/** Czyści portfel główny (root): usuwa wszystkie holdings + cashflows */
 export async function clearDefaultPortfolio(uid) {
   if (!uid) throw new Error("clearDefaultPortfolio: missing uid");
   await _deleteCollectionAll(holdingsCol(uid, null));
   await _deleteCollectionAll(cashflowsCol(uid, null));
-  // wyczyść znaczniki backfill
   try { await deleteDoc(doc(db, "users", uid, "meta", "backfill_buy_v1____main__")); } catch {}
   try { await deleteDoc(doc(db, "users", uid, "meta", "backfill_deposits_v1____main__")); } catch {}
 }
 
-/** Usuwa portfel użytkownika wraz z subkolekcjami i dokumentem meta */
 export async function deletePortfolioDeep(uid, portfolioId) {
   if (!uid) throw new Error("deletePortfolioDeep: missing uid");
   const pid = normPortfolioId(portfolioId);
@@ -686,16 +632,10 @@ export async function deletePortfolioDeep(uid, portfolioId) {
   try { await deleteDoc(doc(db, "users", uid, "portfolios", pid)); } catch {}
 }
 
-/* =========================================================
-   ⭐⭐ NOWE: obsługa listy portfeli + bezpieczne usuwanie
-   ========================================================= */
-
-// meta kolekcja portfeli
 function portfoliosCol(uid) {
   return collection(db, "users", uid, "portfolios");
 }
 
-/** Lista portfeli użytkownika (id + nazwa jeśli jest) */
 export async function listPortfolios(uid) {
   if (!uid) return [];
   const snap = await getDocs(query(portfoliosCol(uid), orderBy("createdAt", "asc")));
@@ -704,14 +644,12 @@ export async function listPortfolios(uid) {
   return out;
 }
 
-/** Liczba wszystkich „portfeli”: 1 (root) + N (named) */
 export async function countAllPortfolios(uid) {
   if (!uid) return 0;
   const named = await getDocs(portfoliosCol(uid));
-  return 1 + named.size; // 1 = główny (root)
+  return 1 + named.size; 
 }
 
-// wybór następnego portfela po usunięciu
 async function _chooseNextPortfolioId(uid, removedId) {
   const rid = normPortfolioId(removedId);
   const rest = (await listPortfolios(uid)).map(x => x.id).filter(id => id !== rid);
@@ -719,13 +657,6 @@ async function _chooseNextPortfolioId(uid, removedId) {
   return null;
 }
 
-/**
- * Bezpieczne usuwanie portfela:
- *  - jeśli to ostatni (root + named = 1) -> blokada
- *  - jeśli portfolioId == null (root) -> czyścimy root (clearDefaultPortfolio)
- *  - jeśli portfolioId != null        -> twarde kasowanie (deletePortfolioDeep)
- * Zwraca: { deleted: boolean, nextId: string|null, reason?: string }
- */
 export async function safeDeletePortfolio(uid, portfolioId) {
   if (!uid) throw new Error("safeDeletePortfolio: missing uid");
 
@@ -747,18 +678,13 @@ export async function safeDeletePortfolio(uid, portfolioId) {
   }
 }
 
-/* =========================================================
-   === NOWE: zapis dywidendy z pełnymi szczegółami (NETTO w PLN)
-   ========================================================= */
 export async function addDividendDetailed(uid, a, b) {
   if (!uid) throw new Error("addDividendDetailed: missing uid");
 
-  // Obsługa signatury: (uid, payload) lub (uid, portfolioId, payload)
   const hasPortfolioArg = typeof b !== "undefined";
   const portfolioId = hasPortfolioArg ? (a || null) : null;
   const p = hasPortfolioArg ? b : a;
 
-  // Kwoty źródłowe
   const grossSrc = Number(p?.grossAmount) || 0;
   const whtSrc   = Number(p?.withholdingTax) || 0;
   const netSrc   = Number.isFinite(Number(p?.netAmount)) ? Number(p?.netAmount) : (grossSrc - whtSrc);
@@ -795,10 +721,6 @@ export async function addDividendDetailed(uid, a, b) {
 
   await addDoc(cashflowsCol(uid, portfolioId), payload);
 }
-
-/* =========================================================
-   📌 DIVIDEND PLANS (prognozy wg EX-DATE)
-   ========================================================= */
 
 function dividendPlansCol(uid, portfolioId = null) {
   const pid = normPortfolioId(portfolioId);
@@ -862,13 +784,6 @@ export async function deleteDividendPlan(uid, a, b) {
   await deleteDoc(ref);
 }
 
-/* =========================================================
-   💾 LIVE PORTFOLIO VALUE (zapis i nasłuch) — spójna wersja
-   Zapisy: users/{uid}/meta/liveValue
-           users/{uid}/portfolios/{id}/meta/liveValue
-   Pole:   valuePLN
-   ========================================================= */
-
 function _liveValueDoc(uid, portfolioId = null) {
   const pid = normPortfolioId(portfolioId);
   return pid
@@ -876,7 +791,6 @@ function _liveValueDoc(uid, portfolioId = null) {
     : doc(db, "users", uid, "meta", "liveValue");
 }
 
-/** Zapis bieżącej wartości w PLN */
 export async function setLivePortfolioValue(uid, portfolioId = null, valuePLN = 0) {
   if (!uid) return;
   try {
@@ -890,17 +804,10 @@ export async function setLivePortfolioValue(uid, portfolioId = null, valuePLN = 
   }
 }
 
-/**
- * Nasłuch wartości z Firestore.
- * Użycie: listenPortfolioValue(uid, scope, { portfolioIds })(callback)
- *  - scope: "__ALL__" albo "", albo konkretne id
- *  - portfolioIds: lista id do zsumowania przy "__ALL__" (dodamy też root "")
- */
 export function listenPortfolioValue(uid, scope, opts = {}) {
   return (callback) => {
     if (!uid) { try { callback(0); } catch {} ; return () => {}; }
 
-    // SUMA ALL: root + przekazane portfele
     if (scope === "__ALL__") {
       const ids = Array.isArray(opts.portfolioIds)
         ? Array.from(new Set(opts.portfolioIds.map(x => (normPortfolioId(x) ?? ""))))
@@ -932,7 +839,6 @@ export function listenPortfolioValue(uid, scope, opts = {}) {
       return () => unsubs.forEach(u => { try { u(); } catch {} });
     }
 
-    // POJEDYNCZY PORTFEL ("" = root lub konkretne id)
     const pid = scope === "" ? "" : (normPortfolioId(scope) || "");
     return onSnapshot(
       _liveValueDoc(uid, pid || null),

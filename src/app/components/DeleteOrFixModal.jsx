@@ -1,6 +1,6 @@
-// File: src/app/components/DeleteOrFixModal.jsx
 "use client";
 import { useMemo, useState } from "react";
+import { updateHoldingNote } from "../../lib/portfolioStore";
 
 const fmtPLN = (v) =>
   new Intl.NumberFormat("pl-PL", {
@@ -11,14 +11,21 @@ const fmtPLN = (v) =>
   }).format(Number.isFinite(Number(v)) ? Number(v) : 0);
 
 export default function DeleteOrFixModal({
+  uid,            // <-- DODANE (aby wiedzieć u jakiego usera zapisać tezę)
+  portfolioId,    // <-- DODANE 
   open,
   onClose,
-  lot,          // { id, shares, buyPrice, buyDate, pair, meta? }
-  group,        // { name, pair }
-  onUndoError,  // async (lot, preview) => void
+  lot,          
+  group,        
+  onUndoError,  
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Stan do edycji tezy
+  const [thesisText, setThesisText] = useState(lot?.note || "");
+  const [savingNote, setSavingNote] = useState(false);
+  const [noteSavedOk, setNoteSavedOk] = useState(false);
 
   const preview = useMemo(() => {
     if (!lot) return null;
@@ -30,8 +37,8 @@ export default function DeleteOrFixModal({
     return {
       grossPaid: cost,
       fee: Number(meta.fee) || 0,
-      topupMode: meta.topupMode || "none",         // 'none' | 'full' | 'diff'
-      topupAmount: Number(meta.topupAmount) || 0,  // PLN
+      topupMode: meta.topupMode || "none",         
+      topupAmount: Number(meta.topupAmount) || 0,  
       txnId: meta.txnId || lot.id,
     };
   }, [lot]);
@@ -40,13 +47,12 @@ export default function DeleteOrFixModal({
 
   const symbol = lot?.pair?.yahoo || group?.pair?.yahoo || group?.name || "—";
 
-  async function handleConfirm() {
+  async function handleConfirmDelete() {
     if (submitting) return;
     try {
       setSubmitting(true);
       await onUndoError?.(lot, preview);
       setDone(true);
-      // krótka pauza i zamknięcie
       setTimeout(() => {
         setSubmitting(false);
         setDone(false);
@@ -54,17 +60,35 @@ export default function DeleteOrFixModal({
       }, 1100);
     } catch (e) {
       setSubmitting(false);
-      // błąd jest już zalogowany w onUndoError; zostawiamy modal otwarty
+    }
+  }
+
+  // NOWA FUNKCJA: Zapis tezy bez usuwania transakcji
+  async function handleSaveNote() {
+    if (!uid || savingNote) return;
+    try {
+      setSavingNote(true);
+      await updateHoldingNote(uid, portfolioId, lot.id, thesisText);
+      setNoteSavedOk(true);
+      setTimeout(() => {
+        setSavingNote(false);
+        setNoteSavedOk(false);
+        onClose?.(); // Zamykamy modal po sukcesie zapisu tezy
+      }, 1000);
+    } catch (e) {
+      setSavingNote(false);
+      console.error("Błąd zapisu tezy:", e);
     }
   }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-zinc-900 text-zinc-100 shadow-xl ring-1 ring-zinc-800">
+        
         {/* header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
           <h3 className="text-lg font-semibold">
-            Cofnij zakup <span className="text-zinc-400">(anuluj błąd)</span>
+            Edycja transakcji <span className="text-zinc-400 font-normal">({symbol})</span>
           </h3>
           <button
             className="text-zinc-400 hover:text-zinc-200"
@@ -76,64 +100,58 @@ export default function DeleteOrFixModal({
         </div>
 
         {/* body */}
-        <div className="px-5 py-4 space-y-4">
-          <div className="text-sm text-zinc-400">
-            Walor: <span className="text-zinc-200">{symbol}</span> · Data zakupu:{" "}
-            <span className="text-zinc-200">
-              {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
-            </span>{" "}
-            · Ilość: <span className="text-zinc-200">{lot.shares}</span> · Cena:{" "}
-            <span className="text-zinc-200">{fmtPLN(lot.buyPrice || 0)}</span>
+        <div className="px-5 py-4 space-y-6">
+          
+          {/* Info o transakcji */}
+          <div className="text-sm text-zinc-300 bg-zinc-800/30 p-3 rounded-lg border border-zinc-800/50">
+             Zakup z dnia: <span className="font-medium text-white">{lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}</span><br/>
+             Ilość: <span className="font-medium text-white">{lot.shares}</span> · 
+             Cena jedn.: <span className="font-medium text-white">{fmtPLN(lot.buyPrice || 0)}</span>
           </div>
 
-          {/* żółty box – uproszczony komunikat */}
-          <div className="rounded-xl border border-yellow-600/50 bg-yellow-900/20 p-4">
-            <div className="font-medium text-yellow-200 mb-1">
-              Co zostanie zrobione?
-            </div>
-            <ul className="text-sm text-yellow-100/90 space-y-1">
-              <li>• Usuniemy ten zakup z listy.</li>
-              <li>• Przywrócimy saldo gotówki do stanu sprzed transakcji.</li>
-              <li>• Statystyki (TWR) pozostaną bez zmian.</li>
-            </ul>
-
-            {/* skrócone podsumowanie kwot */}
-            <div className="mt-3 text-sm text-yellow-100/90 space-y-0.5">
-              <div>Kwota zwrotu: <span className="font-semibold">{fmtPLN(preview?.grossPaid || 0)}</span></div>
-              {preview?.topupMode !== "none" && (
-                <div>Cofnięcie doładowania: <span className="font-semibold">-{fmtPLN(preview?.topupAmount || 0)}</span></div>
-              )}
-              <div>Data księgowania: <span className="font-semibold">
-                {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
-              </span></div>
+          {/* SEKACJA: EDYCJA TEZY */}
+          <div>
+            <label className="text-sm text-zinc-400 mb-2 block font-medium">Teza inwestycyjna (Pamiętnik)</label>
+            <textarea
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-sm text-zinc-200 outline-none focus:border-yellow-500 transition-colors min-h-[100px] resize-y"
+              placeholder="Wpisz dlaczego kupiłeś te akcje..."
+              value={thesisText}
+              onChange={(e) => setThesisText(e.target.value)}
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-200 text-sm font-medium hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                onClick={handleSaveNote}
+                disabled={savingNote}
+              >
+                {savingNote ? "Zapisywanie..." : noteSavedOk ? "Zapisano ✔️" : "Zapisz tezę"}
+              </button>
             </div>
           </div>
 
-          {/* ekran sukcesu */}
-          {done && (
-            <div className="rounded-xl bg-emerald-900/20 border border-emerald-600/40 p-3 text-emerald-300 text-sm">
-              Zakup cofnięty ✔️
+          <div className="border-t border-zinc-800 my-2" />
+
+          {/* SEKACJA: USUNIĘCIE TRANSAKCJI (Danger Zone) */}
+          <div>
+            <h4 className="text-sm font-medium text-red-400 mb-2 flex items-center gap-2">
+              ⚠️ Całkowite cofnięcie transakcji
+            </h4>
+            <div className="rounded-xl border border-red-900/30 bg-red-950/20 p-4">
+              <p className="text-xs text-red-200/70 mb-3">
+                Kliknięcie poniższego przycisku całkowicie usunie ten zapis i przywróci saldo gotówki do stanu sprzed zakupu (zwrot: <strong className="text-red-200">{fmtPLN(preview?.grossPaid || 0)}</strong>).
+              </p>
+              <button
+                className="w-full px-3 py-2 rounded-lg bg-red-950/50 border border-red-900/50 text-red-400 text-sm font-medium hover:bg-red-900/80 hover:text-red-300 transition-colors disabled:opacity-50"
+                onClick={handleConfirmDelete}
+                disabled={submitting}
+              >
+                {submitting ? "Trwa cofanie..." : done ? "Usunięto ✔️" : "Usuń bezpowrotnie ten zakup"}
+              </button>
             </div>
-          )}
+          </div>
+
         </div>
 
-        {/* footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-800">
-          <button
-            className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100"
-            onClick={onClose}
-            disabled={submitting}
-          >
-            Anuluj
-          </button>
-          <button
-            className="px-3 py-2 rounded-lg bg-yellow-500 text-black font-medium hover:bg-yellow-400 disabled:opacity-60"
-            onClick={handleConfirm}
-            disabled={submitting}
-          >
-            {submitting ? "Trwa cofanie…" : "Cofnij zakup"}
-          </button>
-        </div>
       </div>
     </div>
   );

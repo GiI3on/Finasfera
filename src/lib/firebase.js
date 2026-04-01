@@ -1,8 +1,7 @@
-// src/lib/firebase.js
-import { getApps, initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-// UŻYJ SWOICH ZMIENNYCH/CONFIGU: poniżej przykład z env
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -12,8 +11,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Jeżeli masz już gdzieś zainicjalizowane, to to go nie zdubluje:
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Eksport bazy (Firestore) – tego oczekuje cashflowStore
 export const db = getFirestore(app);
+export const auth = getAuth(app);

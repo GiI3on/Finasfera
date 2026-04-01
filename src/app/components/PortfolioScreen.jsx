@@ -803,9 +803,11 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
         }
       />
 
-      {/* Modal: Cofnij zakup */}
+      {/* Modal: Edycja i Cofanie */}
       {fixLot && (
         <DeleteOrFixModal
+          uid={user?.uid}
+          portfolioId={currentPortfolioId === ALL_PORTFOLIO_ID ? null : currentPortfolioId}
           open={!!fixLot}
           onClose={() => setFixLot(null)}
           lot={fixLot.lot}

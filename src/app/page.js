@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import FireChart from "./components/FireChart";
-import DemoChart from "./components/DemoChart";
+import dynamic from "next/dynamic";
+
+// FIX: Dynamiczne importy wykresów zapobiegają błędom SSR (strona wywalała się na serwerze)
+const FireChart = dynamic(() => import("./components/FireChart"), { ssr: false });
+const DemoChart = dynamic(() => import("./components/DemoChart"), { ssr: false });
 
 /* ====== helpers ====== */
 const parseNumber = (str, fb = 0) => {
@@ -16,12 +19,16 @@ const parseNumber = (str, fb = 0) => {
   return Number.isFinite(n) ? n : fb;
 };
 
-const fmtPLN = (v) =>
-  new Intl.NumberFormat("pl-PL", {
+// FIX: Normalizacja spacji z Intl.NumberFormat, aby zapobiec błędom Hydration w Next.js
+const fmtPLN = (v) => {
+  const formatted = new Intl.NumberFormat("pl-PL", {
     style: "currency",
     currency: "PLN",
     maximumFractionDigits: 0,
   }).format(Number.isFinite(v) ? Math.round(v) : 0);
+  
+  return formatted.replace(/[\u202F\u00A0]/g, ' ');
+};
 
 const pct = (x) => Number(x) / 100;
 
@@ -198,6 +205,38 @@ function Kpi({ label, value, compact = false }) {
         {value}
       </div>
     </div>
+  );
+}
+
+/* ====== COMPONENT: SEKACJA PROMOCYJNA SKANERA AI ====== */
+function AIScannerCta() {
+  return (
+    <section className="mt-12 mb-8">
+      <div className="relative group">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+        <div className="relative bg-zinc-900/90 border border-zinc-800 rounded-2xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex-1 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-widest mb-4">
+              Nowość: Żuberek AI
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-3">
+              Wykonaj <span className="text-amber-400">Audyt Portfela</span> w 30 sekund
+            </h2>
+            <p className="text-zinc-400 text-base font-light leading-relaxed mb-0 max-w-2xl">
+              Nasz model analityczny sprawdzi Twoją dywersyfikację, zidentyfikuje ryzyka koncentracji i zaproponuje scenariusze optymalizacji. Całkowicie za darmo.
+            </p>
+          </div>
+          <div className="shrink-0 w-full md:w-auto">
+            <Link 
+              href="/skaner-ai" 
+              className="flex items-center justify-center w-full px-8 py-4 bg-amber-400 text-black font-black text-base rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_-10px_rgba(251,191,36,0.3)]"
+            >
+              Uruchom Model →
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -678,6 +717,9 @@ export default function Page() {
           </div>
         </div>
       </section>
+
+      {/* --- NOWOŚĆ: SEKCJA ŻUBEREK AI --- */}
+      <AIScannerCta />
 
       {/* DEMO: portfel vs S&P 500 */}
       <section className="card mt-8">
