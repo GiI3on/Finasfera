@@ -40,6 +40,15 @@ export default function ArticlePage() {
           Zacznijmy od konkretu. Jeśli odkładasz 500 PLN miesięcznie i chowasz je do przysłowiowej skarpety, po 30 latach masz 180 000 PLN. Jednak jeśli te same pieniądze zainwestujesz ze średnioroczną stopą zwrotu na poziomie 7% (historyczna średnia szerokiego rynku akcji), po 30 latach na Twoim koncie widnieje ponad 600 000 PLN.
         </p>
 
+        {/* --- WYKRES 1: Procent Składany --- */}
+        <div className="my-10 w-full flex justify-center">
+          <img 
+            src="/wykres-fire.png" 
+            alt="Wykres procentu składanego" 
+            className="w-full h-auto rounded-2xl border border-zinc-800 shadow-xl"
+          />
+        </div>
+
         <p>
           Widzisz tę różnicę? To ponad <strong>400 tysięcy złotych wypracowane przez procent składany</strong>. Inwestowanie to nie jest „pomnażanie pieniędzy” w jeden wieczór. To sadzenie dębu. Czekanie, aż „będziesz mieć więcej pieniędzy”, jest najdroższym błędem. Każdy rok zwłoki kosztuje Cię dziesiątki tysięcy złotych z przyszłych zysków.
         </p>
@@ -48,11 +57,20 @@ export default function ArticlePage() {
           2. Fundamenty: Zanim kupisz pierwszą akcję
         </h2>
         <p>
-          Zanim rzucisz się na głęboką wodę GPW, musisz mieć suchy ląd, na który wrócisz w razie burzy. Inwestorzy, którzy odnoszą sukcesy, zawsze zaczynają od dwóch rzeczy: bezpieczeństwa i optymalizacji podatkowej.
+          Zanim rzucisz się na głęboką wodę GPW, musisz mieć suchy ląd, na który wrócisz in razie burzy. Inwestorzy, którzy odnoszą sukcesy, zawsze zaczynają od dwóch rzeczy: bezpieczeństwa i optymalizacji podatkowej.
         </p>
         <p>
           Pierwszym krokiem jest budowa <strong>poduszki finansowej</strong>. To kwota (zazwyczaj 3-6 Twoich miesięcznych wydatków), która leży na bezpiecznym koncie. Drugim krokiem jest wybór „opakowania” dla Twoich inwestycji: <strong className="text-yellow-400">IKE (Indywidualne Konto Emerytalne)</strong> oraz <strong className="text-yellow-400">IKZE (Indywidualne Konto Zabezpieczenia Emerytalnego)</strong>. Pozwalają one legalnie uniknąć 19% podatku Belka.
         </p>
+
+        {/* --- GRAFIKA 2: PIRAMIDA FINANSOWA --- */}
+        <div className="my-10 w-full flex justify-center">
+          <img 
+            src="/piramida.png" 
+            alt="Piramida Niezależności Finansowej" 
+            className="w-full max-w-lg h-auto rounded-2xl border border-zinc-800 shadow-xl"
+          />
+        </div>
 
         <h2 className="text-2xl font-bold text-zinc-100 border-b border-zinc-800 pb-2 mt-12">
           3. Strategia „Taniej Pizzy” – czym są fundusze ETF?
@@ -61,6 +79,8 @@ export default function ArticlePage() {
           Skoro masz już 500-2000 PLN, jak je ulokować, żeby nie zjadły Cię prowizje? Kupowanie pojedynczych akcji przy małych kwotach bywa ryzykowne i drogie. Tutaj wchodzą fundusze <strong className="text-yellow-400">ETF (Exchange Traded Funds)</strong>. Wyobraź sobie, że chcesz zjeść pizzę, na której jest 500 różnych składników. Zamiast kupować każdą pieczarkę i szynkę osobno, kupujesz jeden gotowy kawałek, który zawiera w sobie mikroskopijne cząstki wszystkiego.
         </p>
 
+        {/* USUNIĘTO: Miejsce na grafikę ETF */}
+
         <h3 className="text-xl font-semibold text-zinc-200 mt-6">Dlaczego ETF-y są idealne na start?</h3>
         <ul className="space-y-3 mt-4 text-zinc-300">
           <li><strong className="text-zinc-100">Niskie koszty:</strong> Płacisz ułamek procenta za zarządzanie rocznie, co przy małym kapitale ma ogromne znaczenie.</li>
@@ -68,10 +88,11 @@ export default function ArticlePage() {
           <li><strong className="text-zinc-100">Prostota:</strong> Inwestujesz w rozwój światowej gospodarki (np. S&P 500 lub MSCI World), a nie w losy jednej, wybranej firmy.</li>
         </ul>
 
-        {/* --- CTA PRZERYWNIK W POŁOWIE ARTYKUŁU --- */}
+        {/* --- CTA Z REKLAMĄ SKANERA --- */}
         <div className="my-16 p-8 md:p-10 border border-zinc-800 rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-950 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600"></div>
-          <h3 className="text-2xl md:text-3xl font-bold text-zinc-100 mb-4">Przetestuj Swój Scenariusz z Żuberkiem AI</h3>
+
+          <h3 className="text-2xl md:text-3xl font-bold text-zinc-100 mb-4 mt-4">Przetestuj Swój Scenariusz z Żuberkiem AI</h3>
           <p className="text-zinc-400 mb-8 max-w-xl text-lg">
             Wiesz już, od czego zacząć, ale czy wiesz, jak ocenić ryzyko Twoich pierwszych inwestycji? Użyj naszego skanera wspieranego przez Sztuczną Inteligencję, aby prześwietlić portfel.
           </p>
@@ -121,7 +142,7 @@ export default function ArticlePage() {
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 md:p-8 my-10 shadow-lg">
           <h3 className="text-xl font-bold text-zinc-100 mt-0 mb-6 flex items-center gap-3">
-            <span className="text-2xl">📋</span>
+            {/* USUNIĘTO: span z emotką */}
             Praktyczny plan działania (Checklista)
           </h3>
           <ul className="space-y-4 list-none pl-0 m-0">

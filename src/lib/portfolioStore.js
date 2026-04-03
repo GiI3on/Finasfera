@@ -847,3 +847,18 @@ export function listenPortfolioValue(uid, scope, opts = {}) {
     );
   };
 }
+
+// --- DODANA FUNKCJA: Zapis tezy do Firebase ---
+export async function updateHoldingNote(uid, portfolioId, holdingId, note) {
+  if (!uid || !holdingId) return;
+  
+  const colPath = portfolioId
+    ? `users/${uid}/portfolios/${portfolioId}/holdings`
+    : `users/${uid}/holdings`;
+    
+  const docRef = doc(db, colPath, holdingId);
+  
+  await updateDoc(docRef, {
+    note: note
+  });
+}

@@ -124,7 +124,7 @@ export default function DeleteOrFixModal({
                 onClick={handleSaveNote}
                 disabled={savingNote}
               >
-                {savingNote ? "Zapisywanie..." : noteSavedOk ? "Zapisano ✔️" : "Zapisz tezę"}
+                {savingNote ? "Zapisywanie..." : noteSavedOk ? "Zapisano" : "Zapisz tezę"}
               </button>
             </div>
           </div>
@@ -134,7 +134,7 @@ export default function DeleteOrFixModal({
           {/* SEKACJA: USUNIĘCIE TRANSAKCJI (Danger Zone) */}
           <div>
             <h4 className="text-sm font-medium text-red-400 mb-2 flex items-center gap-2">
-              ⚠️ Całkowite cofnięcie transakcji
+              Całkowite cofnięcie transakcji
             </h4>
             <div className="rounded-xl border border-red-900/30 bg-red-950/20 p-4">
               <p className="text-xs text-red-200/70 mb-3">
@@ -145,7 +145,7 @@ export default function DeleteOrFixModal({
                 onClick={handleConfirmDelete}
                 disabled={submitting}
               >
-                {submitting ? "Trwa cofanie..." : done ? "Usunięto ✔️" : "Usuń bezpowrotnie ten zakup"}
+                {submitting ? "Trwa cofanie..." : done ? "Usunięto" : "Usuń bezpowrotnie ten zakup"}
               </button>
             </div>
           </div>

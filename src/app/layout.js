@@ -72,7 +72,7 @@ export const metadata = {
   },
   themeColor: "#facc15",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icon.png", // <-- Zmieniono na nowe logo PNG
     apple: "/icon-192.png",
   },
   verification: {
@@ -84,6 +84,21 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pl">
       <body className="min-h-screen bg-zinc-950 text-zinc-100">
+        
+        {/* Niewidoczny skrypt JSON-LD dla robotów Google (Oficjalne powiązanie logo z marką) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "Finasfera",
+              "url": "https://finasfera.pl", 
+              "logo": "https://finasfera.pl/icon.png" 
+            })
+          }}
+        />
+
         <AuthProvider>
           <TopNav />
           <main>

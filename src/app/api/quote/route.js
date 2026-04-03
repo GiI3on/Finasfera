@@ -40,15 +40,18 @@ function guessCcyFromYahoo(sym = "") {
   if (s.endsWith(".SS") || s.endsWith(".SZ")) return "CNY";
   if (s.endsWith(".KS") || s.endsWith(".KQ")) return "KRW";
   if (s.endsWith(".AX")) return "AUD";
+  
+  // FIX: Brak kropki w nazwie tickera oznacza czysty rynek amerykański (np. AMZN, NVDA, AAPL)
+  if (!s.includes(".")) return "USD";
+
   return null;
 }
 const normalizeCcyForFx = (ccy) =>
   (String(ccy || "").toUpperCase() === "GBX" ? "GBP" : String(ccy || "").toUpperCase());
 
-/* === NOWE: mapowanie indeksów GPW -> kody Stooq (jak w /api/history) === */
+/* === mapowanie indeksów GPW -> kody Stooq === */
 function mapGpwIndexToStooq(sym = "") {
   const S = normSym(sym).replace(/\s+/g, "");
-  // akceptuj ^WIG, WIG; ^WIG20, WIG20; ^MWIG40 (również MW40), ^SWIG80 (SW80)
   if (S === "^WIG" || S === "WIG") return "wig";
   if (S === "^WIG20" || S === "WIG20") return "wig20";
   if (S === "^MWIG40" || S === "MWIG40" || S === "^MW40" || S === "MW40") return "mw40";
@@ -137,12 +140,13 @@ async function stooqClose(symbol, debugArr) {
 }
 
 /* =========================
-   FX: Stooq -> NBP -> exchangerate.host
+   FX: NBP -> Stooq -> exchangerate -> Emergency
    ========================= */
 async function nbpFx(ccy, debugArr) {
   try {
     const url = `https://api.nbp.pl/api/exchangerates/rates/A/${encodeURIComponent(ccy)}/?format=json`;
-    const r = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+    // FIX: Używamy ISR (cache na godzinę), żeby odciążyć API NBP i nie dostawać blokad (rate limit)
+    const r = await fetch(url, { headers: { Accept: "application/json" }, next: { revalidate: 3600 } });
     debugArr?.push({ fx: "nbp", status: r.status });
     if (!r.ok) return null;
     const j = await r.json().catch(()=>null);
@@ -150,6 +154,7 @@ async function nbpFx(ccy, debugArr) {
     return Number.isFinite(rate) ? rate : null;
   } catch { return null; }
 }
+
 async function hostFx(ccy, debugArr) {
   try {
     const url = `https://api.exchangerate.host/latest?base=${encodeURIComponent(ccy)}&symbols=PLN&source=ecb`;
@@ -161,20 +166,28 @@ async function hostFx(ccy, debugArr) {
     return Number.isFinite(rate) ? rate : null;
   } catch { return null; }
 }
+
 async function fxToPLN(ccy, debugArr) {
   const C = String(ccy || "PLN").toUpperCase();
   if (C === "PLN") return 1;
   const ck = `fx:${C}`;
   const cached = getCache(ck); if (cached != null) return cached;
 
-  const st = await stooqClose(`${C.toLowerCase()}pln`, debugArr);
-  if (Number.isFinite(st)) { setCache(ck, st, TTL_EOD_MS); return st; }
-
   const nbp = await nbpFx(C, debugArr);
   if (Number.isFinite(nbp)) { setCache(ck, nbp, TTL_EOD_MS); return nbp; }
 
+  const st = await stooqClose(`${C.toLowerCase()}pln`, debugArr);
+  if (Number.isFinite(st)) { setCache(ck, st, TTL_EOD_MS); return st; }
+
   const host = await hostFx(C, debugArr);
   if (Number.isFinite(host)) { setCache(ck, host, TTL_EOD_MS); return host; }
+
+  // FIX PANCERNY: Jeśli API NBP, Stooq i Host padną, ratujemy wykres stałym przybliżonym kursem FX
+  const EMERGENCY_RATES = { USD: 4.00, EUR: 4.30, GBP: 5.05, CHF: 4.45, CAD: 2.90, AUD: 2.60, JPY: 0.026 };
+  if (EMERGENCY_RATES[C]) {
+    debugArr?.push({ fx: "emergency", rate: EMERGENCY_RATES[C] });
+    return EMERGENCY_RATES[C];
+  }
 
   setCache(ck, null, 5_000);
   return null;
@@ -269,13 +282,23 @@ async function finnhubQuote(sym, debugArr) {
    ========================= */
 async function toPLNFromQuoteStruct(sym, srcQuote, debugArr) {
   const { px, pc, ccy } = normalizeGBX(srcQuote?.price, srcQuote?.prevClose, srcQuote?.currency);
+  
   if (!Number.isFinite(px)) {
     return { pricePLN: null, prevClosePLN: null, currency: ccy || null, yahoo: sym, source: "noprice" };
   }
-  const useCcy = normalizeCcyForFx(ccy);
-  if (!useCcy || useCcy === "PLN") {
-    return { pricePLN: px, prevClosePLN: Number.isFinite(pc) ? pc : null, currency: useCcy || "PLN", yahoo: sym, source: "direct" };
+  
+  // FIX: Bezpiecznik. Jeśli waluta nie została zidentyfikowana (jest null),
+  // kategorycznie odrzucamy cenę. Dzięki temu nie potraktujemy 200 USD jako 200 PLN.
+  if (!ccy) {
+    debugArr?.push({ error: "unknown_currency_rejected", px });
+    return { pricePLN: null, prevClosePLN: null, currency: null, yahoo: sym, source: "unknown_currency" };
   }
+
+  const useCcy = normalizeCcyForFx(ccy);
+  if (useCcy === "PLN") {
+    return { pricePLN: px, prevClosePLN: Number.isFinite(pc) ? pc : null, currency: "PLN", yahoo: sym, source: "direct" };
+  }
+  
   const fx = await fxToPLN(useCcy, debugArr);
   return {
     pricePLN: Number.isFinite(fx) ? px * fx : null,
@@ -290,21 +313,17 @@ async function toPLNFromQuoteStruct(sym, srcQuote, debugArr) {
 async function quoteOneToPLN(yahooSym, debugArr) {
   const sym = normSym(yahooSym);
 
-  /* === NOWE: obsługa indeksów GPW (WIG/WIG20/mWIG40/sWIG80) przez Stooq === */
   const gpwIdx = mapGpwIndexToStooq(sym);
   if (gpwIdx) {
     const st = await stooqClose(gpwIdx, debugArr);
     if (Number.isFinite(st)) {
       return { pricePLN: st, prevClosePLN: null, currency: "PLN", yahoo: sym, source: "stooq-index" };
     }
-    // jeśli Stooq zawiedzie, nie ma sensu iść w Yahoo/Finnhub dla tych tickerów;
-    // ale spróbujemy jeszcze Yahoo awaryjnie:
     const y = await yahooQuote(sym, debugArr);
     if (y && Number(y.price) > 0) return toPLNFromQuoteStruct(sym, y, debugArr);
     return { pricePLN: null, prevClosePLN: null, currency: "PLN", yahoo: sym, source: "index-fail" };
   }
 
-  // GPW spółki (.WA): najpierw Stooq, potem Yahoo/Finnhub
   if (isWA(sym)) {
     const st = await stooqClose(toStooqCodeWA(sym), debugArr);
     if (Number.isFinite(st)) {
@@ -319,7 +338,6 @@ async function quoteOneToPLN(yahooSym, debugArr) {
     return { pricePLN: null, prevClosePLN: null, currency: null, yahoo: sym, source: "fail" };
   }
 
-  // Rynki zagraniczne: Yahoo → Finnhub → Stooq (+ FX wg sufiksu)
   const y = await yahooQuote(sym, debugArr);
   if (y && Number(y.price) > 0) return toPLNFromQuoteStruct(sym, y, debugArr);
 
