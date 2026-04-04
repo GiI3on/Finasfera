@@ -6,6 +6,8 @@ import { auth } from '../../lib/firebase';
 import { listPortfolios, listenHoldings } from '../../lib/portfolioStore';
 import { resolvePair } from '../../lib/pairs';
 import { Treemap, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+// Zmiana importu na bezpieczniejszy (alias lub jedna kropka mniej, zależnie od konfiguracji)
+import { useAuth } from '../components/AuthProvider'; 
 
 const DIFFICULTY_CLS = {
   easy:   'text-emerald-400 border-emerald-500/30 bg-emerald-500/5',
@@ -18,6 +20,72 @@ const IMPACT_CLS = {
   medium: 'text-zinc-300   border-zinc-600    bg-zinc-800/60',
   low:    'text-zinc-600   border-zinc-800    bg-transparent',
 };
+
+// =======================================================================
+// DANE DEMO DLA NIEZALOGOWANEGO UŻYTKOWNIKA
+// =======================================================================
+const DEMO_REPORT = {
+  score: 62,
+  percentile: 65,
+  pos_count: 6,
+  total_value: 24500,
+  poland_pct: 45,
+  global_pct: 55,
+  narrative: "Portfel przykładowego inwestora o średniej tolerancji ryzyka, charakteryzujący się mocną ekspozycją na amerykański sektor technologiczny oraz polski sektor finansowy. Widoczna jest próba dywersyfikacji, jednak koncentracja w największych spółkach wprowadza podwyższoną zmienność.",
+  thesis_evaluation_summary: "Tezy inwestycyjne wydają się skupiać wokół długoterminowego wzrostu spółek technologicznych (AI, chmura) oraz stabilnych dywidend z lokalnego rynku. Jest to solidne podejście, choć wymaga monitorowania wycen spółek wzrostowych na amerykańskiej giełdzie.",
+  score_breakdown: {
+    diversification: 58,
+    concentration_risk: 42,
+    goal_alignment: 70,
+    strategy_consistency: 80
+  },
+  bubble_data: [
+    { ticker: "NVDA", value: 6500, roi: 45.2, pct: 26.5 },
+    { ticker: "AAPL", value: 5000, roi: 12.4, pct: 20.4 },
+    { ticker: "XTB.WA", value: 4500, roi: 22.1, pct: 18.3 },
+    { ticker: "PKO.WA", value: 4000, roi: 8.5, pct: 16.3 },
+    { ticker: "CDR.WA", value: 2500, roi: -15.4, pct: 10.2 },
+    { ticker: "TSLA", value: 2000, roi: -2.1, pct: 8.1 }
+  ],
+  holdings_analysis: [
+    { ticker: "NVDA", analysis: "NVIDIA jest absolutnym liderem w segmencie chipów AI, co uzasadnia imponującą stopę zwrotu. Wysoka wycena wskaźnikowa (P/E) oznacza jednak podwyższone ryzyko przy ewentualnym spowolnieniu zamówień od firm technologicznych." },
+    { ticker: "AAPL", analysis: "Stabilny filar portfela z ogromnymi zasobami gotówki. Oczekuje się, że dalszy rozwój usług subskrypcyjnych zrekompensuje nieco wolniejszą sprzedaż sprzętu." },
+    { ticker: "XTB.WA", analysis: "Dynamiczny wzrost liczby klientów oraz sprzyjające środowisko rynkowe w Europie napędzają wyniki XTB. Ekspozycja na tę spółkę to mocny zakład na wysoką zmienność na światowych giełdach." },
+    { ticker: "PKO.WA", analysis: "Solidna spółka dywidendowa, której wyniki silnie zależą od stóp procentowych w Polsce. Działa jako defensywna przeciwwaga dla agresywnej części technologicznej." },
+    { ticker: "CDR.WA", analysis: "CD Projekt znajduje się w fazie przejściowej między dużymi premierami. Ujemna stopa zwrotu odzwierciedla koszty deweloperskie i długi czas oczekiwania na kolejne hity. Wymaga cierpliwości." },
+    { ticker: "TSLA", analysis: "Presja na marże i silna konkurencja z Chin sprawiają, że Tesla przeżywa trudniejszy okres. Fundamentalnie jednak spółka wciąż dominuje na rynkach zachodnich." }
+  ],
+  synergy_and_outliers: "W portfelu występuje synergia między defensywnym charakterem polskich banków (PKO) a agresywnym wzrostem amerykańskich gigantów technologicznych. CDR.WA odstaje obecnie wynikami od reszty stawki, ciążąc na całkowitym zysku portfela.",
+  risk_impact_summary: "Zidentyfikowano ryzyko walutowe (PLN/USD) oraz wrażliwość na wyceny w sektorze tech. Ewentualna korekta w USA silnie odciśnie się na ogólnym wyniku pomimo stabilności polskiej części portfela.",
+  top_risks: [
+    "NVDA, AAPL, TSLA: Wysoka koncentracja w sektorze technologicznym USA (ok. 55% portfela) czyni portfel wrażliwym na rotację kapitału inwestorów instytucjonalnych.",
+    "XTB.WA, PKO.WA: Znaczna ekspozycja na polski sektor finansowy, który jest historycznie podatny na zmiany regulacyjne i decyzje polityczne.",
+    "Brak ekspozycji na w pełni bezpieczne aktywa (np. obligacje, złoto, gotówka na lokacie) w środowisku wysokich stóp procentowych."
+  ],
+  top_strengths: [
+    "Solidny fundament wzrostowy dzięki rynkowym liderom z USA posiadającym ogromne przewagi konkurencyjne.",
+    "Dobra równowaga walutowa (podział między USD a PLN) naturalnie zabezpieczająca przed wahaniami złotówki.",
+    "Odpowiedni dobór spółek o wysokiej płynności giełdowej – możliwość błyskawicznego wyjścia z inwestycji w razie kryzysu."
+  ],
+  action_steps: [
+    {
+      title: "Redukcja koncentracji w topowych spółkach",
+      difficulty: "medium",
+      impact: "high",
+      why: "Delikatne zrównoważenie wag największych pozycji (szczególnie NVDA) zmniejszy wrażliwość całego portfela na ewentualną korektę w sektorze AI.",
+      time_needed: "1-2 godziny"
+    },
+    {
+      title: "Weryfikacja tezy dla CDR.WA",
+      difficulty: "easy",
+      impact: "medium",
+      why: "Spółka odnotowuje ujemną stopę zwrotu. Należy ocenić i zapisać w pamiętniku inwestora, czy pierwotne powody jej zakupu są nadal aktualne.",
+      time_needed: "30 minut"
+    }
+  ]
+};
+
+// =======================================================================
 
 function formatPLN(n) {
   if (n === undefined || n === null || isNaN(n)) return '0 PLN';
@@ -254,7 +322,6 @@ function Report({ report }) {
         </blockquote>
       </section>
 
-      {/* NOWA SEKCJA: Podsumowanie Tez */}
       {report.thesis_evaluation_summary && (
         <section className="mt-8">
           <SectionLabel>Audyt Pamiętnika Inwestora</SectionLabel>
@@ -331,7 +398,6 @@ function Report({ report }) {
           </div>
         </div>
 
-        {/* NOWA SEKCJA: Synergia i odchylenia */}
         {report.synergy_and_outliers && (
           <div className="bg-zinc-900/50 border border-zinc-800 p-5 rounded-xl mb-8 mt-2">
             <h4 className="text-[13px] font-bold text-amber-400 uppercase tracking-widest mb-3">Synergia i spójność portfela</h4>
@@ -403,14 +469,14 @@ function Report({ report }) {
 
       {selectedTicker && (
         <>
-          <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setSelectedTicker(null)} />
+          <div className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm" onClick={() => setSelectedTicker(null)} />
           <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-zinc-950 border-l border-zinc-800 p-8 shadow-2xl overflow-y-auto transform transition-transform translate-x-0">
             <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-900">
               <div>
                 <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mb-1">Analiza fundamentalna</p>
                 <h4 className="text-white text-2xl font-bold tracking-tight">{selectedTicker}</h4>
               </div>
-              <button onClick={() => setSelectedTicker(null)} className="text-zinc-500 hover:text-white transition-colors bg-zinc-900 p-2 rounded-full">
+              <button onClick={() => setSelectedTicker(null)} className="text-zinc-500 hover:text-white transition-colors bg-zinc-900 hover:bg-zinc-800 p-2 rounded-full">
                 ✕
               </button>
             </div>
@@ -431,6 +497,8 @@ function Report({ report }) {
 
 export default function SkanerAIPage() {
   const [user, loadingAuth] = useAuthState(auth);
+  const { signIn } = useAuth(); // Globalna funkcja logowania
+  
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolioId, setSelected] = useState('');
   const [report, setReport] = useState(null);
@@ -564,7 +632,6 @@ export default function SkanerAIPage() {
       const sym = String(pair?.yahoo || h.name || "Nieznana").toUpperCase();
 
       if (!byKey.has(sym)) {
-        // DODANE: thesis będzie zbierać notatki ze wszystkich zakupów danej spółki
         byKey.set(sym, { key: sym, name: h.name, lots: [], totalShares: 0, costSum: 0 });
       }
       const g = byKey.get(sym);
@@ -597,7 +664,6 @@ export default function SkanerAIPage() {
       let safeValue = valuePLN;
       if (safeValue <= 0) safeValue = 1;
 
-      // DODANE: Złożenie pamiętnika ze wszystkich transz (lotów) do jednego stringa
       const theses = g.lots.map(l => l.note).filter(Boolean);
       const combinedThesis = theses.length > 0 ? Array.from(new Set(theses)).join(" | ") : null;
 
@@ -608,7 +674,7 @@ export default function SkanerAIPage() {
         valuePLN: safeValue,
         value: safeValue,
         profitPct: profitPct,
-        thesis: combinedThesis // <--- PRZEKAZUJEMY TEZĘ DO BACKENDU
+        thesis: combinedThesis
       });
     }
 
@@ -643,7 +709,7 @@ export default function SkanerAIPage() {
         body: JSON.stringify({
           user: { name: user?.displayName?.split(' ')[0] ?? 'Inwestor', accountType: 'IKE' },
           onboarding: onboardingData,
-          holdings, // Przekazujemy holdings (z "thesis") do modelu
+          holdings, 
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Błąd serwera');
@@ -661,25 +727,56 @@ export default function SkanerAIPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <header className="flex items-center justify-between mb-8">
-          <div>
-            <p className="text-[15px] text-zinc-600 uppercase tracking-[0.2em] mb-1 font-bold">Finasfera Intelligence</p>
-            <h1 className="text-4xl font-extrabold tracking-tight">Żuberek <span className="text-amber-400">AI</span></h1>
+        
+        {/* HEADER ZMIENNY ZALEŻNIE OD STANU (Zalogowany vs Niezalogowany) */}
+        {!user ? (
+          <div className="mb-14 text-center">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3">
+              Skaner AI — <span className="text-amber-400">raport demo</span>
+            </h1>
+            <p className="text-[15px] text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+              To jest przykładowy raport pokazujący, jak w praktyce działa Żuberek AI. Dane są statyczne i służą wyłącznie celom podglądowym — Twój realny raport będzie w 100% dopasowany do Twojego portfela.
+            </p>
+            <div className="mt-8">
+              <button 
+                onClick={signIn} 
+                className="px-8 py-3 bg-amber-400 hover:bg-white text-black font-black text-[13px] tracking-widest uppercase rounded-full shadow-[0_0_20px_rgba(251,191,36,0.3)] transition-all active:scale-95"
+              >
+                Zaloguj się i wykonaj darmowy audyt
+              </button>
+            </div>
           </div>
-          {report && (
-            <button onClick={clearReport} className="px-5 py-2.5 bg-transparent border border-zinc-700 hover:bg-zinc-900 hover:border-zinc-500 text-zinc-300 hover:text-white text-[13px] font-bold rounded-xl transition-all flex items-center gap-2">
-              ← Nowy skan
-            </button>
-          )}
-        </header>
+        ) : (
+          <header className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-[15px] text-zinc-600 uppercase tracking-[0.2em] mb-1 font-bold">Finasfera Intelligence</p>
+              <h1 className="text-4xl font-extrabold tracking-tight">Żuberek <span className="text-amber-400">AI</span></h1>
+            </div>
+            {report && (
+              <button onClick={clearReport} className="px-5 py-2.5 bg-transparent border border-zinc-700 hover:bg-zinc-900 hover:border-zinc-500 text-zinc-300 hover:text-white text-[13px] font-bold rounded-xl transition-all flex items-center gap-2">
+                ← Nowy skan
+              </button>
+            )}
+          </header>
+        )}
 
-        <p className="text-xs text-zinc-600 mb-12 italic border-b border-zinc-900 pb-4">
-          Moduł o charakterze ściśle edukacyjnym. Pamiętaj, że inwestowanie wiąże się z ryzykiem utraty kapitału. Nie doradzamy, co kupić lub sprzedać.
-        </p>
+        {/* Jeśli użytkownik zalogowany - pokazujemy ostrzeżenie */}
+        {user && (
+          <p className="text-xs text-zinc-600 mb-12 italic border-b border-zinc-900 pb-4">
+            Moduł o charakterze ściśle edukacyjnym. Pamiętaj, że inwestowanie wiąże się z ryzykiem utraty kapitału. Nie doradzamy, co kupić lub sprzedać.
+          </p>
+        )}
 
         {error && <div className="mb-8 p-4 bg-red-500/5 border border-red-500/20 rounded-xl text-sm text-red-400">⚠ {error}</div>}
 
-        {!report ? (
+        {/* LOGIKA WYŚWIETLANIA: */}
+        {/* 1. Niezalogowany -> Pokazuj DEMO_REPORT */}
+        {/* 2. Zalogowany, brak raportu -> Pokazuj Formularz */}
+        {/* 3. Zalogowany, ma raport -> Pokazuj prawdziwy Raport */}
+
+        {!user ? (
+          <Report report={DEMO_REPORT} />
+        ) : !report ? (
           <OnboardingForm 
             holdings={holdings} 
             portfolios={portfolios} 
@@ -687,7 +784,7 @@ export default function SkanerAIPage() {
             onSelectPortfolio={setSelected} 
             onSubmit={runAudit} 
             loading={loading}
-            isDataFetching={isDataFetching} 
+            isDataFetching={isDataFetching}
           />
         ) : (
           <>
