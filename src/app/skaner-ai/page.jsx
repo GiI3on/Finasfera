@@ -6,7 +6,6 @@ import { auth } from '../../lib/firebase';
 import { listPortfolios, listenHoldings } from '../../lib/portfolioStore';
 import { resolvePair } from '../../lib/pairs';
 import { Treemap, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
-// Zmiana importu na bezpieczniejszy (alias lub jedna kropka mniej, zależnie od konfiguracji)
 import { useAuth } from '../components/AuthProvider'; 
 
 const DIFFICULTY_CLS = {
@@ -85,6 +84,32 @@ const DEMO_REPORT = {
   ]
 };
 
+// =======================================================================
+// KOMUNIKAT O BRAKU TOKENÓW
+// =======================================================================
+function QuotaExceededMessage() {
+  return (
+    <div className="p-8 bg-zinc-900/80 border border-amber-500/30 rounded-2xl text-center max-w-2xl mx-auto my-8 shadow-xl shadow-amber-500/5 animate-in fade-in zoom-in-95 duration-500">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full border border-amber-500/50 bg-amber-500/10 mb-4">
+        <span className="text-amber-500 font-black text-xl">!</span>
+      </div>
+      
+      <h3 className="text-xl font-black text-white uppercase tracking-wider mb-3">
+        Dzienny limit audytów wyczerpany
+      </h3>
+      
+      <p className="text-zinc-400 leading-relaxed text-sm mb-6">
+        Finasfera znajduje się obecnie w fazie darmowego, wczesnego dostępu. Aby utrzymać to narzędzie całkowicie za darmo, korzystamy z limitowanej puli zapytań do sztucznej inteligencji OpenAI. Niestety, budżet przewidziany na dzisiaj został już w pełni wykorzystany przez społeczność.
+      </p>
+      
+      <div className="p-4 bg-black/50 border border-zinc-800 rounded-xl inline-block">
+        <span className="text-amber-500 font-bold text-sm uppercase tracking-widest">
+          Zapraszamy jutro po odnowieniu limitów
+        </span>
+      </div>
+    </div>
+  );
+}
 // =======================================================================
 
 function formatPLN(n) {
@@ -497,13 +522,14 @@ function Report({ report }) {
 
 export default function SkanerAIPage() {
   const [user, loadingAuth] = useAuthState(auth);
-  const { signIn } = useAuth(); // Globalna funkcja logowania
+  const { signIn } = useAuth(); 
   
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolioId, setSelected] = useState('');
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false); // NOWY STAN DLA LIMITÓW
   const abortRef = useRef(null);
 
   const [fsHoldings, setFsHoldings] = useState([]);
@@ -691,6 +717,7 @@ export default function SkanerAIPage() {
   const clearReport = () => {
     setReport(null);
     setError(null);
+    setIsQuotaExceeded(false); // Resetujemy błąd limitu
     localStorage.removeItem('finasfera_ai_report');
   };
 
@@ -699,6 +726,7 @@ export default function SkanerAIPage() {
     abortRef.current = new AbortController();
     setLoading(true);
     setError(null);
+    setIsQuotaExceeded(false);
     localStorage.setItem('finasfera_fire_settings', JSON.stringify(onboardingData));
 
     try {
@@ -712,13 +740,27 @@ export default function SkanerAIPage() {
           holdings, 
         }),
       });
+      
+      // OBSŁUGA BŁĘDU LIMITÓW (429)
+      if (res.status === 429) {
+         setIsQuotaExceeded(true);
+         setLoading(false);
+         return;
+      }
+      
       if (!res.ok) throw new Error((await res.json()).error || 'Błąd serwera');
       const data = await res.json();
       setReport(data);
       localStorage.setItem('finasfera_ai_report', JSON.stringify(data));
     } catch (e) {
       if (e.name === 'AbortError') return;
-      setError(e.message);
+      
+      // Fallback - jeśli błąd ma w treści "quota" lub "429"
+      if (e.message.toLowerCase().includes("quota") || e.message.includes("429") || e.message.toLowerCase().includes("rate limit")) {
+          setIsQuotaExceeded(true);
+      } else {
+          setError(e.message);
+      }
     } finally { setLoading(false); }
   };
 
@@ -728,7 +770,6 @@ export default function SkanerAIPage() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans">
       <div className="max-w-3xl mx-auto px-6 py-12">
         
-        {/* HEADER ZMIENNY ZALEŻNIE OD STANU (Zalogowany vs Niezalogowany) */}
         {!user ? (
           <div className="mb-14 text-center">
             <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3">
@@ -752,7 +793,7 @@ export default function SkanerAIPage() {
               <p className="text-[15px] text-zinc-600 uppercase tracking-[0.2em] mb-1 font-bold">Finasfera Intelligence</p>
               <h1 className="text-4xl font-extrabold tracking-tight">Żuberek <span className="text-amber-400">AI</span></h1>
             </div>
-            {report && (
+            {(report || isQuotaExceeded) && (
               <button onClick={clearReport} className="px-5 py-2.5 bg-transparent border border-zinc-700 hover:bg-zinc-900 hover:border-zinc-500 text-zinc-300 hover:text-white text-[13px] font-bold rounded-xl transition-all flex items-center gap-2">
                 ← Nowy skan
               </button>
@@ -760,7 +801,6 @@ export default function SkanerAIPage() {
           </header>
         )}
 
-        {/* Jeśli użytkownik zalogowany - pokazujemy ostrzeżenie */}
         {user && (
           <p className="text-xs text-zinc-600 mb-12 italic border-b border-zinc-900 pb-4">
             Moduł o charakterze ściśle edukacyjnym. Pamiętaj, że inwestowanie wiąże się z ryzykiem utraty kapitału. Nie doradzamy, co kupić lub sprzedać.
@@ -770,12 +810,11 @@ export default function SkanerAIPage() {
         {error && <div className="mb-8 p-4 bg-red-500/5 border border-red-500/20 rounded-xl text-sm text-red-400">⚠ {error}</div>}
 
         {/* LOGIKA WYŚWIETLANIA: */}
-        {/* 1. Niezalogowany -> Pokazuj DEMO_REPORT */}
-        {/* 2. Zalogowany, brak raportu -> Pokazuj Formularz */}
-        {/* 3. Zalogowany, ma raport -> Pokazuj prawdziwy Raport */}
-
         {!user ? (
           <Report report={DEMO_REPORT} />
+        ) : isQuotaExceeded ? (
+          // POKAZUJEMY ELEGANCKĄ WIADOMOŚĆ O LIMITACH
+          <QuotaExceededMessage />
         ) : !report ? (
           <OnboardingForm 
             holdings={holdings} 

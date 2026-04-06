@@ -33,20 +33,22 @@ const ChatAI = dynamic(
 export const metadata = {
   title: "Finasfera — Kalkulator FIRE i tracker portfela",
   description:
-    "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, porównaj z benchmarkami, zaplanuj emeryturę.",
+    "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, zaplanuj bezpieczną emeryturę i sprawdź przewidywania ZUS.",
   keywords: [
     "Finasfera",
     "inwestowanie",
     "FIRE",
     "finansowa niezależność",
     "kalkulator inwestycyjny",
+    "kalkulator emerytalny", // <-- Dodane dla SEO
+    "symulacja emerytury",   // <-- Dodane dla SEO
     "portfel inwestycyjny",
     "forum finansowe",
   ],
   openGraph: {
     title: "Finasfera — Kalkulator FIRE i tracker portfela",
     description:
-      "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, porównaj z benchmarkami, zaplanuj emeryturę.",
+      "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, zaplanuj bezpieczną emeryturę i sprawdź przewidywania ZUS.",
     url: "https://finasfera.pl",
     siteName: "Finasfera",
     locale: "pl_PL",
@@ -63,7 +65,7 @@ export const metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Finasfera — Kalkulator FIRE i tracker portfela",
-    description: "Oblicz kiedy osiągniesz wolność finansową.",
+    description: "Oblicz kiedy osiągniesz wolność finansową i zaplanuj bezpieczną emeryturę.",
     images: ["https://finasfera.pl/og-image.png"],
   },
   robots: {
@@ -72,7 +74,7 @@ export const metadata = {
   },
   themeColor: "#facc15",
   icons: {
-    icon: "/icon.png", // <-- Zmieniono na nowe logo PNG
+    icon: "/icon.png", 
     apple: "/icon-192.png",
   },
   verification: {

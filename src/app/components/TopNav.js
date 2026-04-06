@@ -11,7 +11,8 @@ const links = [
   { href: "/fire-path", label: "Etapy Wolności" },
   { href: "/moj-portfel", label: "Śledzenie Akcji" },
   { href: "/statystyki",  label: "Statystyki" },
-  { href: "/skaner-ai", label: "Skaner AI" }, // ⬅️ DODANO TUTAJ
+  { href: "/skaner-ai", label: "Skaner AI" },
+  { href: "/symulacja-monte-carlo", label: "Kalkulator Emerytury" },
   { href: "/forum", label: "Forum" },
   { href: "/blog", label: "Edukacja" },
 ];
@@ -27,7 +28,7 @@ export default function TopNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, signIn, signOut } = useAuth();
 
-  // ⬇️ Zamknij wszystkie panele/menu przy każdej zmianie ścieżki
+  // Zamknij wszystkie panele/menu przy każdej zmianie ścieżki
   useEffect(() => {
     setOpen(false);
     setMenuOpen(false);
@@ -43,15 +44,15 @@ export default function TopNav() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-800 bg-black/80 backdrop-blur-md supports-[backdrop-filter]:bg-black/60">
-      <nav className="mx-auto max-w-6xl px-4 sm:px-6 h-14 flex items-center justify-between">
+      <nav className="mx-auto max-w-7xl px-4 sm:px-6 h-14 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="font-semibold text-xl tracking-tight shrink-0">
+        <Link href="/" className="font-semibold text-xl tracking-tight shrink-0 mr-4 lg:mr-8">
           <span className="text-zinc-100">Fina</span>
           <span className="text-yellow-400">sfera</span>
         </Link>
 
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-7">
+        {/* Desktop links - Skalowane dynamicznie */}
+        <div className="hidden lg:flex items-center gap-4 xl:gap-6 flex-1">
           {links.map((l) => {
             const active = isActive(pathname, l.href);
             return (
@@ -59,7 +60,7 @@ export default function TopNav() {
                 key={l.href}
                 href={l.href}
                 aria-current={active ? "page" : undefined}
-                className={`text-base font-medium relative transition-colors ${
+                className={`text-sm xl:text-base font-medium whitespace-nowrap relative transition-colors ${
                   active ? "text-yellow-400" : "text-zinc-300 hover:text-zinc-100"
                 }`}
               >
@@ -73,9 +74,9 @@ export default function TopNav() {
         </div>
 
         {/* Prawy bok: auth */}
-        <div className="hidden md:flex items-center">
+        <div className="hidden lg:flex items-center ml-4">
           {!user && (
-            <button className="btn-primary h-9 px-3" onClick={signIn}>
+            <button className="btn-primary h-9 px-3 text-sm whitespace-nowrap" onClick={signIn}>
               Zaloguj się
             </button>
           )}
@@ -103,7 +104,7 @@ export default function TopNav() {
                     {initials}
                   </div>
                 )}
-                <span className="text-sm text-zinc-300 max-w-[140px] truncate hidden lg:block">
+                <span className="text-sm text-zinc-300 max-w-[140px] truncate hidden xl:block">
                   {user.displayName || user.email}
                 </span>
                 <svg width="16" height="16" viewBox="0 0 24 24" className={`text-zinc-400 transition-transform ${menuOpen ? "rotate-180" : ""}`}>
@@ -145,7 +146,7 @@ export default function TopNav() {
 
         {/* Mobile burger button */}
         <button
-          className="md:hidden p-2 -mr-2 text-zinc-300 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
+          className="lg:hidden p-2 -mr-2 text-zinc-300 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors"
           onClick={() => setOpen((s) => !s)}
           aria-label="Otwórz menu"
           aria-expanded={open}
@@ -164,7 +165,7 @@ export default function TopNav() {
 
       {/* Mobile panel (Overlay) */}
       {open && (
-        <div className="md:hidden absolute top-14 left-0 w-full bg-zinc-950 border-b border-zinc-800 shadow-2xl animate-in slide-in-from-top-2 duration-200">
+        <div className="lg:hidden absolute top-14 left-0 w-full bg-zinc-950 border-b border-zinc-800 shadow-2xl animate-in slide-in-from-top-2 duration-200">
           <div className="flex flex-col p-4 space-y-1">
             {links.map((l) => {
               const active = isActive(pathname, l.href);

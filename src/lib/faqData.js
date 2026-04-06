@@ -197,7 +197,7 @@ export const faqData = {
       id: "stat-benchmark",
       question: "Po co te Benchmarki?",
       answer: `
-        <p>Benchmark to "lustro". Zawsze powinieneś porównywać swój portfel z darmowym i prostym rynkiem. Dlaczego?</p>
+        <p>Benchmark to "lustro". Zawsze powinieneś powrównywać swój portfel z darmowym i prostym rynkiem. Dlaczego?</p>
         <p>Jeśli spędzasz przed wykresem 10 godzin w tygodniu i zarabiasz 10% rocznie, a nic nie robiący leniuszek, który kupił sobie jeden ETF na amerykańskie firmy (S&P 500) zarabia 15%... to chyba czas przestać uważać się za Wilka z Wall Street, prawda?</p>
       `,
     },
@@ -309,6 +309,67 @@ export const faqData = {
       question: "Czy macie jakieś kategorie tekstów?",
       answer: `
         <p>Tak! Jeśli widzisz nad tytułem żółty napis "Przewodnik" albo "Analiza", to jest to klikalny tag. Śmiało w niego kliknij, a my zaserwujemy Ci listę wyłącznie z artykułami z tego konkretnego "koszyka".</p>
+      `,
+    }
+  ],
+
+  // ==========================================
+  // 7. SYMULACJA MONTE CARLO (Kalkulator Bezpiecznej Emerytury)
+  // ==========================================
+  "/symulacja-monte-carlo": [
+    {
+      id: "mc-what-is",
+      question: "Czym jest Symulacja Monte Carlo?",
+      answer: `
+        <p>Zwykłe kalkulatory finansowe zakładają, że giełda rośnie po idealnie prostej linii (np. 7% rok w rok). My wiemy, że to fikcja.</p>
+        <p><b>Symulacja Monte Carlo</b> to zaawansowany algorytm (używany przez największe banki i fundusze), który losuje <b>1000 alternatywnych ścieżek Twojego życia</b>. Wrzuca w nie potężne historyczne krachy, lata nudnej stagnacji i niespodziewane hossy. Dzięki temu nie zgadujemy, jak będzie – my testujemy Twój portfel na każdy możliwy scenariusz.</p>
+      `,
+    },
+    {
+      id: "mc-three-scenarios",
+      question: "Dlaczego widzę aż 3 różne kwoty emerytury?",
+      answer: `
+        <p>Inwestowanie na dekady to ogromna niepewność, dlatego zamiast jednej liczby, dajemy Ci pełen obraz:</p>
+        <ul>
+          <li><b>Neutralny (Typowy):</b> To Twój cel. Tyle powinieneś wypłacać, jeśli światowa gospodarka będzie rozwijać się normalnie (50% szans na sukces).</li>
+          <li><b>Pesymistyczny (Gwarancja):</b> To Twoja "pancerna poduszka". Tyle możesz bezpiecznie wypłacać nawet wtedy, gdy na świecie wybuchnie kryzys, a giełdy runą (85% szans na przetrwanie).</li>
+          <li><b>Optymistyczny:</b> Scenariusz marzeń, zakładający wieloletnią hossę technologiczną.</li>
+        </ul>
+      `,
+    },
+    {
+      id: "mc-glide-path",
+      question: "Czy aplikacja zakłada 100% akcji na emeryturze?",
+      answer: `
+        <p>Absolutnie nie! To byłoby finansowe samobójstwo.</p>
+        <p>Nasz silnik ma wbudowaną profesjonalną strategię <b>Glide Path (Namiot Obligacji)</b>. Oznacza to, że na 3 lata przed Twoim przejściem na FIRE i przez 7 lat po nim, system automatycznie "uspokaja" Twój portfel. Sztucznie obniża wahania giełdowe, symulując moment, w którym przenosisz część kapitału w bezpieczne obligacje. Dzięki temu jesteś chroniony przed największym wrogiem rentiera: krachem dokładnie w dniu przejścia na emeryturę.</p>
+      `,
+    },
+    {
+      id: "mc-horizon",
+      question: "Dlaczego mam planować do 85-90 roku życia?",
+      answer: `
+        <p>Największym błędem jest wpisanie w polu "Planuj do wieku" wartości równej "Wiek FIRE" (np. 65 i 65). Wtedy aplikacja uzna, że Twoja emerytura trwa... zero lat i wypluje błędne dane!</p>
+        <p>Aby portfel FIRE zadziałał, musi Cię utrzymać do końca życia. Statystyczny Polak żyje ok. 75 lat, ale <b>planowanie do 85-90 roku życia to standard w finansach</b>, który gwarantuje, że nie zabraknie Ci pieniędzy, jeśli będziesz cieszyć się wyjątkowym zdrowiem.</p>
+      `,
+    },
+    {
+      id: "mc-inflation",
+      question: "Dlaczego mój majątek na końcu wykresu jest taki niski?",
+      answer: `
+        <p>Wykres, który widzisz, odziera pieniądze z iluzji inflacji i pokazuje <b>Realną Siłę Nabywczą</b>.</p>
+        <p>Gdybyśmy pokazali Ci wartość nominalną (z inflacją), zobaczyłbyś na końcu 20 lub 30 milionów złotych. Problem w tym, że za 50 lat te wirtualne miliony mogą starczyć ledwie na waciki. Nasz wykres na bieżąco tnie zyski o wskaźnik inflacji (2.5%), dlatego kwoty wydają się mniejsze, ale za to są w 100% prawdziwe i "dzisiejsze".</p>
+      `,
+    },
+    {
+      id: "mc-zus",
+      question: "Jak wyliczacie ZUS i Fazę Pomostową?",
+      answer: `
+        <p>Ścieżka FIRE dzieli się na dwa etapy, które nasz kalkulator automatycznie dla Ciebie łączy:</p>
+        <ul>
+          <li><b>Faza Pomostowa (od FIRE do 65 lat):</b> Jesteś zdany tylko na siebie. Twój portfel pokrywa 100% kosztów Twojego życia.</li>
+          <li><b>Faza ZUS (po 65 latach):</b> Wkracza państwo. Algorytm wylicza prognozę Twojej emerytury ZUS na podstawie dzisiejszych zarobków netto i danych makroekonomicznych (stopy zastąpienia). Od 65 roku życia system wyciąga mniej pieniędzy z Twojego portfela, zrzucając część ciężaru na ZUS.</li>
+        </ul>
       `,
     }
   ]

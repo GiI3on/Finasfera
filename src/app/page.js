@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
-// FIX: Dynamiczne importy wykresów zapobiegają błędom SSR (strona wywalała się na serwerze)
+// FIX: Dynamiczne importy wykresów zapobiegają błędom SSR
 const FireChart = dynamic(() => import("./components/FireChart"), { ssr: false });
 const DemoChart = dynamic(() => import("./components/DemoChart"), { ssr: false });
 
@@ -19,7 +19,7 @@ const parseNumber = (str, fb = 0) => {
   return Number.isFinite(n) ? n : fb;
 };
 
-// FIX: Normalizacja spacji z Intl.NumberFormat, aby zapobiec błędom Hydration w Next.js
+// FIX: Normalizacja spacji z Intl.NumberFormat
 const fmtPLN = (v) => {
   const formatted = new Intl.NumberFormat("pl-PL", {
     style: "currency",
@@ -47,7 +47,7 @@ const MONTHS = [
   "grudzień",
 ];
 
-// 🔐 zgodność z /fire-path
+// Zgodność z /fire-path
 const FIRE_CALC_KEYS = [
   "fireCalculator:lastPlan",
   "fire:lastPlan",
@@ -55,7 +55,6 @@ const FIRE_CALC_KEYS = [
   "calculator:fire",
 ];
 
-// mały debounce
 function useDebounced(fn, delay = 400) {
   const t = useRef();
   return (...args) => {
@@ -64,7 +63,6 @@ function useDebounced(fn, delay = 400) {
   };
 }
 
-// szybkie budowanie query do linka „zapisz plan” (zostawione na przyszłość)
 const buildQuery = (state) =>
   new URLSearchParams({
     initial: String(state.initial),
@@ -76,12 +74,11 @@ const buildQuery = (state) =>
     indexation: String(state.indexationExtra),
   }).toString();
 
-/* ====== FIX: INFO TIP - MOBILE: CENTER, DESKTOP: POPUP NAD IKONKĄ ====== */
+/* ====== COMPONENT: INFO TIP ====== */
 function InfoTip({ text }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    // WAŻNE: Wrapper 'relative' zakotwicza dymek przy ikonce na desktopie
     <span className="relative inline-flex items-center ml-2">
       <button
         type="button"
@@ -98,7 +95,6 @@ function InfoTip({ text }) {
 
       {isOpen && (
         <>
-          {/* TŁO: Zamyka dymek (tylko mobile/fixed mode) */}
           <div 
             className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-[1px] sm:bg-transparent sm:backdrop-blur-0"
             onClick={(e) => {
@@ -108,17 +104,11 @@ function InfoTip({ text }) {
             }}
           />
 
-          {/* DYMEK */}
           <div 
             className="
-              /* MOBILE: Fixed Center (Zawsze na środku ekranu) */
               fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85vw] max-w-[300px] z-[100]
-              
-              /* DESKTOP (sm): Absolute NAD Ikonką (bottom-full) */
               sm:absolute sm:top-auto sm:bottom-full sm:left-1/2 sm:mb-2
               sm:w-64 sm:-translate-y-0 sm:-translate-x-1/2
-              
-              /* WSPÓLNE STYLE */
               p-4 bg-zinc-800 border border-zinc-600 rounded-xl shadow-2xl text-xs text-zinc-200 text-left leading-relaxed animate-in zoom-in-95 duration-200
             "
             onClick={(e) => {
@@ -136,13 +126,10 @@ function InfoTip({ text }) {
                       setIsOpen(false);
                   }}
                   className="text-zinc-400 hover:text-white font-bold p-1 -m-1 leading-none text-sm bg-zinc-700/50 rounded-full w-5 h-5 flex items-center justify-center"
-                  aria-label="Zamknij"
                 >
                     ✕
                 </button>
              </div>
-             
-             {/* Strzałeczka w dół (tylko na desktopie) */}
              <div className="hidden sm:block absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-800 border-r border-b border-zinc-600 rotate-45"></div>
           </div>
         </>
@@ -182,9 +169,6 @@ function NumberField({ label, value, onChange, placeholder, min, max }) {
   );
 }
 
-/**
- * Kafelek KPI
- */
 function Kpi({ label, value, compact = false }) {
   return (
     <div
@@ -217,7 +201,7 @@ function AIScannerCta() {
         <div className="relative bg-zinc-900/90 border border-zinc-800 rounded-2xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex-1 text-center md:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-widest mb-4">
-              Nowość: Żuberek AI
+              Audyt AI
             </div>
             <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-3">
               Wykonaj <span className="text-amber-400">Audyt Portfela</span> w 30 sekund
@@ -240,16 +224,89 @@ function AIScannerCta() {
   );
 }
 
+/* ====== COMPONENT: SEKACJA PROMOCYJNA KALKULATORA EMERYTURY ====== */
+function MonteCarloCta() {
+  return (
+    <section className="mt-8 mb-8">
+      <div className="relative group">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-emerald-700 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+        <div className="relative bg-zinc-900/90 border border-zinc-800 rounded-2xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex-1 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-black uppercase tracking-widest mb-4">
+              Nowość w Finasferze
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-3">
+              Symulator <span className="text-emerald-400">Bezpiecznej Emerytury</span>
+            </h2>
+            <p className="text-zinc-400 text-base font-light leading-relaxed mb-0 max-w-2xl">
+              Zwykłe kalkulatory kłamią. Zobacz ile dokładnie otrzymasz z ZUS i przetestuj swój portfel inwestycyjny na historyczne krachy przy użyciu profesjonalnej symulacji algorytmicznej.
+            </p>
+          </div>
+          <div className="shrink-0 w-full md:w-auto">
+            <Link 
+              href="/symulacja-monte-carlo" 
+              className="flex items-center justify-center w-full px-8 py-4 bg-emerald-500 text-white font-black text-base rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_-10px_rgba(16,185,129,0.3)] uppercase tracking-wider"
+            >
+              Testuj Emeryturę
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ====== COMPONENT: SEKACJA PROMOCYJNA ŚLEDZENIA PORTFELA ====== */
+function PortfolioTrackerCta() {
+  return (
+    <section className="mt-8 mb-12">
+      <div className="relative group">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+        <div className="relative bg-zinc-900/90 border border-zinc-800 rounded-2xl p-8 md:p-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+          <div className="flex-1 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest mb-4">
+              Darmowy Tracker
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-3">
+              Twój Portfel vs <span className="text-blue-400">S&amp;P 500</span>
+            </h2>
+            <p className="text-zinc-400 text-base font-light leading-relaxed mb-6 max-w-2xl mx-auto lg:mx-0">
+              Zobacz, jak radzisz sobie na tle szerokiego rynku. Podepnij własne ETF-y i akcje, by na bieżąco śledzić zyski, spadki i historyczne benchmarki.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+              <Link
+                href="/portfel-inwestycyjny"
+                className="flex items-center justify-center px-6 py-4 bg-blue-600 text-white font-black text-sm rounded-xl hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_-10px_rgba(37,99,235,0.4)] uppercase tracking-wider"
+              >
+                Analizuj Portfel
+              </Link>
+              <Link
+                href="/statystyki"
+                className="flex items-center justify-center px-6 py-4 bg-zinc-800 text-zinc-300 font-bold text-sm rounded-xl hover:bg-zinc-700 transition-colors uppercase tracking-wider border border-zinc-700"
+              >
+                Statystyki
+              </Link>
+            </div>
+          </div>
+          <div className="shrink-0 w-full lg:w-[45%] h-52 md:h-60 lg:h-64 pointer-events-none">
+            <DemoChart />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ====== strona ====== */
 export default function Page() {
   // Podstawowe
   const [initial, setInitial] = useState(20000);
   const [monthly, setMonthly] = useState(500);
-  const [rate, setRate] = useState(10); // %/rok NOMINALNIE
+  const [rate, setRate] = useState(10); 
   const [years, setYears] = useState(30);
 
   // Zaawansowane
-  const [indexationExtra, setIndexationExtra] = useState(0); // realny wzrost wpłat ponad inflację (%/rok)
+  const [indexationExtra, setIndexationExtra] = useState(0); 
   const [annualExpenses, setAnnualExpenses] = useState(60000);
   const [targetMultiplier, setTargetMultiplier] = useState(25);
 
@@ -268,26 +325,18 @@ export default function Page() {
     [annualExpenses, targetMultiplier]
   );
 
-  // ======== PERSISTENCE: load -> save =========
   function makePlan() {
     const plan = {
-      // dane wejściowe
       initial: parseNumber(initial, 0),
       monthly: parseNumber(monthly, 0),
       rate: parseNumber(rate, 0),
       years: parseNumber(years, 0),
-
-      // cel FIRE
       annualExpenses: parseNumber(annualExpenses, 0),
-      expenses: parseNumber(annualExpenses, 0), // alias
-      monthlyExpenses: parseNumber(annualExpenses, 0) / 12, // alias kompatybilny
+      expenses: parseNumber(annualExpenses, 0), 
+      monthlyExpenses: parseNumber(annualExpenses, 0) / 12, 
       targetMultiplier: parseNumber(targetMultiplier, 25),
-      mult: parseNumber(targetMultiplier, 25), // alias
-
-      // indeksacja wpłat
+      mult: parseNumber(targetMultiplier, 25), 
       indexationExtra: parseNumber(indexationExtra, 0),
-
-      // meta
       updatedAt: Date.now(),
     };
     return plan;
@@ -308,7 +357,6 @@ export default function Page() {
 
   const savePlan = useDebounced(() => savePlanExplicit(makePlan()), 400);
 
-  // Bootstrap: wczytaj plan, jeśli istnieje
   useEffect(() => {
     if (typeof window === "undefined") return;
     for (const key of FIRE_CALC_KEYS) {
@@ -345,12 +393,10 @@ export default function Page() {
     }
   }, []);
 
-  // Auto-zapis przy zmianie celów
   useEffect(() => {
     savePlan();
-  }, [annualExpenses, targetMultiplier, indexationExtra]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [annualExpenses, targetMultiplier, indexationExtra]); 
 
-  // Ładowanie CPI NBP
   useEffect(() => {
     let stop = false;
     async function load() {
@@ -380,14 +426,14 @@ export default function Page() {
     const baseYear = start.getFullYear();
     const baseMonth = start.getMonth();
 
-    const nominalRateYear = pct(parseNumber(rate, 0)); // np. 0.10
-    const indexExtraReal = pct(parseNumber(indexationExtra, 0)); // realnie ponad inflację
+    const nominalRateYear = pct(parseNumber(rate, 0)); 
+    const indexExtraReal = pct(parseNumber(indexationExtra, 0)); 
 
     const baseMonthlyPay = parseNumber(monthly, 0);
     const initialCapital = parseNumber(initial, 0);
 
     let capital = initialCapital;
-    let monthlyPayReal = baseMonthlyPay; // w dzisiejszych zł w danym roku
+    let monthlyPayReal = baseMonthlyPay; 
     let contribAcc = 0;
 
     const labels = [];
@@ -398,7 +444,6 @@ export default function Page() {
     const totalMonths = Y * 12;
 
     for (let month = 0; month <= totalMonths; month++) {
-      // zapis stanu na początku roku
       if (month % 12 === 0) {
         const yr = baseYear + Math.floor((baseMonth + month) / 12);
         labels.push(String(yr));
@@ -411,9 +456,7 @@ export default function Page() {
       const currentYear =
         baseYear + Math.floor((baseMonth + month) / 12);
 
-      // 🔒 Inflacja z NBP z bezpiecznym fallbackiem
       const annualInfl = (() => {
-        // brak danych z API -> używamy celu inflacyjnego 2.5%
         if (!nbpCpi?.length) return 0.025;
 
         const found = nbpCpi.find((r) => r?.year === currentYear);
@@ -421,30 +464,23 @@ export default function Page() {
           return pct(found.cpi);
         }
 
-        // jeśli brak konkretnego roku -> ostatnia znana wartość lub 2.5%
         const last = nbpCpi[nbpCpi.length - 1];
         const lastCpi = typeof last?.cpi === "number" ? last.cpi : 2.5;
         return pct(lastCpi);
       })();
 
-      // REALNA stopa zwrotu = nominalna - inflacja
       const realRateYear = nominalRateYear - annualInfl;
       const mRate = realRateYear / 12;
 
-      // realna miesięczna wpłata w danym roku
       capital += monthlyPayReal;
       contribAcc += monthlyPayReal;
-
-      // wzrost kapitału o realną stopę
       capital *= 1 + mRate;
 
-      // koniec roku → indeksacja wpłat realnie ponad inflację
       const isEndOfYear = (month + 1) % 12 === 0;
       if (isEndOfYear && indexExtraReal !== 0) {
         monthlyPayReal *= 1 + indexExtraReal;
       }
 
-      // osiągnięcie celu (zapisujemy pierwszy raz)
       if (!reachedAt && capital >= fireTarget) {
         reachedAt = new Date(baseYear, baseMonth + month + 1, 1);
       }
@@ -463,7 +499,6 @@ export default function Page() {
 
     savePlanExplicit(makePlan());
 
-    // Automatyczny scroll do wyników
     setTimeout(() => {
       if (resultsRef.current) {
         resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -477,17 +512,15 @@ export default function Page() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-24">
-      {/* Tytuł */}
       <section className="text-center mt-10 mb-6">
         <h1 className="h1">
           Kalkulator <span className="text-yellow-400 typewriter">FIRE</span>
         </h1>
         <p className="mt-2 muted">
-          Zrób szybkie obliczenie i zobacz, jak blisko jesteś.
+          Zrób szybkie obliczenie i zobacz, jak blisko jesteś wolności finansowej.
         </p>
       </section>
 
-      {/* Komunikat o błędzie CPI */}
       {nbpError && (
         <div className="mb-4 rounded-lg border border-yellow-600/50 bg-yellow-900/20 px-4 py-3 text-sm text-yellow-200">
           Brak danych inflacji NBP — przyjmujemy <b>2.5% inflacji</b>, żeby nie
@@ -495,9 +528,7 @@ export default function Page() {
         </div>
       )}
 
-      {/* Dwie kolumny */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch auto-rows-fr">
-        {/* ZAŁOŻENIA */}
         <div className="card flex flex-col h-full">
           <div className="card-inner flex flex-col flex-1">
             <h2 className="h2 mb-4">Założenia</h2>
@@ -570,15 +601,12 @@ export default function Page() {
               Sprawdź swoją drogę
             </button>
 
-            {/* Opcje zaawansowane */}
             <div className="mt-4 space-y-4">
-              {/* Inflacja NBP */}
               <div className="muted text-sm flex items-center gap-2">
                 Inflacja: ścieżka NBP (API)
                 <InfoTip text="Korzystamy z prognozy inflacji (CPI) NBP, a po zakończeniu prognozy przyjmujemy ostatnią znaną wartość (lub cel 2.5%), żeby wszystkie wyniki były w dzisiejszych złotówkach." />
               </div>
 
-              {/* Indeksacja miesięcznych wpłat */}
               <NumberField
                 label={
                   <>
@@ -617,7 +645,6 @@ export default function Page() {
                 />
               </div>
 
-              {/* Krótki opis logiki */}
               <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
                 Wszystkie wyniki po prawej stronie pokazujemy w{" "}
                 <b>dzisiejszych złotówkach</b>. Od nominalnej stopy zwrotu
@@ -629,12 +656,10 @@ export default function Page() {
           </div>
         </div>
 
-        {/* PROGNOZA - tutaj podpinam ref={resultsRef} */}
         <div className="card flex flex-col h-full" ref={resultsRef}>
           <div className="card-inner flex flex-col flex-1">
             <h2 className="h2">Prognoza</h2>
 
-            {/* Grid 2 kolumny na mobile */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Kpi
                 label={`Wartość po ${years} latach`}
@@ -644,13 +669,11 @@ export default function Page() {
                 label="Suma wpłat"
                 value={result ? fmtPLN(result.contrib) : "—"}
               />
-              {/* Cel FIRE zajmuje 2 kolumny na mobile */}
               <div className="col-span-2 sm:col-span-1">
                  <Kpi label="Cel FIRE (dziś)" value={fmtPLN(fireTarget)} />
               </div>
             </div>
 
-            {/* Kafelki FIRE */}
             <div className="grid grid-cols-2 gap-3 mt-3">
               <Kpi
                 label="Czy osiągnięty?"
@@ -676,7 +699,6 @@ export default function Page() {
               />
             </div>
 
-            {/* WYKRES - FIX: usunięcie overflow-hidden dla tooltipa */}
             <div className="mt-4 flex-1">
               <div className="relative h-80 sm:h-[420px] flex items-center justify-center rounded-lg">
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-yellow-400/8 to-transparent rounded-lg" />
@@ -699,7 +721,6 @@ export default function Page() {
               </div>
             </div>
 
-            {/* CTA: Zapisz plan */}
             {result && (
               <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
                 <div className="text-sm text-zinc-400">
@@ -721,91 +742,11 @@ export default function Page() {
       {/* --- NOWOŚĆ: SEKCJA ŻUBEREK AI --- */}
       <AIScannerCta />
 
-      {/* DEMO: portfel vs S&P 500 */}
-      <section className="card mt-8">
-        <div className="card-inner">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            {/* tekst + przyciski */}
-            <div>
-              <h3 className="h2 mb-2">
-                Jak wygląda Twój portfel vs. S&amp;P 500?
-              </h3>
-              <p className="muted">
-                Zobacz, jak przykładowy portfel radziłby sobie na tle
-                szerokiego rynku. Potem podepnij własne ETF-y i akcje, żeby
-                dostać podobną analizę dla siebie.
-              </p>
+      {/* --- NOWOŚĆ: KALKULATOR EMERYTURY (MONTE CARLO) --- */}
+      <MonteCarloCta />
 
-              <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                <Link
-                  href="/portfel-inwestycyjny"
-                  className="btn-primary inline-flex items-center justify-center px-4 py-2"
-                >
-                  Analizuj swój portfel za darmo →
-                </Link>
-
-                <Link
-                  href="/statystyki"
-                  className="btn-primary px-3 py-2 text-sm bg-yellow-400/90 hover:bg-yellow-300 text-black"
-                >
-                  Zobacz statystyki portfela →
-                </Link>
-              </div>
-            </div>
-
-            {/* wykres demo */}
-            <div className="h-52 md:h-56 lg:h-60">
-              <DemoChart />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Forum */}
-      <section className="card mt-8">
-        <div className="card-inner">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="text-2xl font-bold text-yellow-400">Forum</h3>
-              <p className="text-zinc-300">
-                Dołącz do społeczności inwestorów FIRE — zadawaj pytania i
-                dziel się doświadczeniem.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link href="/forum" className="btn-primary">
-                Wejdź na forum
-              </Link>
-              <Link
-                href="/forum"
-                className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-              >
-                Najnowsze wątki →
-              </Link>
-            </div>
-          </div>
-
-          <ul className="mt-4 grid gap-2 sm:grid-cols-3">
-            {[
-              "Jak inwestować w ETF?",
-              "Jak zjeść budżet domowy?",
-              "Dziennik mojej drogi do FIRE",
-            ].map((t, i) => (
-              <li
-                key={i}
-                className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900/60"
-              >
-                <Link href="/forum" className="block truncate">
-                  {t}
-                </Link>
-                <div className="mt-1 text-xs text-zinc-400">
-                  społeczność FIRE
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      {/* --- NOWOŚĆ: TRACKER PORTFELA --- */}
+      <PortfolioTrackerCta />
 
       {/* Edukacja */}
       <section className="card mt-10">
@@ -846,13 +787,13 @@ export default function Page() {
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link
-                  href="/kalkulator-inwestycyjny"
+                  href="/symulacja-monte-carlo"
                   className="btn-primary px-3 py-2"
                 >
-                  Kalkulator inwestycyjny
+                  Kalkulator emerytalny
                 </Link>
                 <Link
-                  href="/portfel-inwestycyjny"
+                  href="/moj-portfel"
                   className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                 >
                   Portfel online
@@ -908,6 +849,53 @@ export default function Page() {
           </div>
         </div>
       </section>
+
+      {/* Forum */}
+      <section className="card mt-8">
+        <div className="card-inner">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-2xl font-bold text-yellow-400">Forum</h3>
+              <p className="text-zinc-300">
+                Dołącz do społeczności inwestorów FIRE — zadawaj pytania i
+                dziel się doświadczeniem.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href="/forum" className="btn-primary">
+                Wejdź na forum
+              </Link>
+              <Link
+                href="/forum"
+                className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+              >
+                Najnowsze wątki →
+              </Link>
+            </div>
+          </div>
+
+          <ul className="mt-4 grid gap-2 sm:grid-cols-3">
+            {[
+              "Jak inwestować w ETF?",
+              "Jak zjeść budżet domowy?",
+              "Dziennik mojej drogi do FIRE",
+            ].map((t, i) => (
+              <li
+                key={i}
+                className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900/60"
+              >
+                <Link href="/forum" className="block truncate">
+                  {t}
+                </Link>
+                <div className="mt-1 text-xs text-zinc-400">
+                  społeczność FIRE
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
     </main>
   );
 }

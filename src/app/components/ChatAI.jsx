@@ -92,11 +92,31 @@ export default function ChatAI() {
           mode: mode 
         }),
       });
+      
+      // OBSŁUGA BŁĘDU LIMITÓW (429) - Specjalna wiadomość od Asystenta
+      if (res.status === 429) {
+          setMessages(prev => [...prev, { 
+              role: 'ai', 
+              content: "**Dzienny limit zapytań wyczerpany.**\n\nFinasfera znajduje się w fazie darmowego, wczesnego dostępu (Beta). Aby udostępniać nasze narzędzia całkowicie za darmo, korzystamy z limitowanej puli zapytań do algorytmów AI. Niestety, budżet na dzisiejsze odpowiedzi został już wykorzystany przez społeczność.\n\nZapraszamy jutro po odnowieniu limitów!", 
+              isManual: false 
+          }]);
+          setLoading(false);
+          return;
+      }
+      
       const data = await res.json();
       const cleanText = data.text.replace(/```markdown|```/g, '');
       setMessages(prev => [...prev, { role: 'ai', content: cleanText, isManual: false }]);
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'ai', content: "BŁĄD POŁĄCZENIA." }]);
+      if (err.message.toLowerCase().includes("quota") || err.message.includes("429")) {
+          setMessages(prev => [...prev, { 
+              role: 'ai', 
+              content: "**Dzienny limit zapytań wyczerpany.**\n\nFinasfera znajduje się w fazie darmowego, wczesnego dostępu (Beta). Dzisiejszy budżet zapytań do serwerów sztucznej inteligencji został wyczerpany. Zapraszamy jutro po odnowieniu limitów!", 
+              isManual: false 
+          }]);
+      } else {
+          setMessages(prev => [...prev, { role: 'ai', content: "BŁĄD POŁĄCZENIA." }]);
+      }
     } finally {
       setLoading(false);
     }
@@ -191,7 +211,6 @@ export default function ChatAI() {
               <div className="h-full flex flex-col items-center justify-center gap-4">
                 
                 <div className="text-center mb-2">
-                   {/* Zwiększona czcionka z 13px na 14px i mocniejszy kolor */}
                    <p className="text-zinc-300 text-[14px] leading-relaxed px-4">
                      {!userUid ? "Cześć! Wybierz poradnik z listy poniżej. Zaloguj się, aby odblokować pełną analizę AI." : "W czym mogę Ci pomóc? Wybierz temat z listy lub zadaj pytanie."}
                    </p>
@@ -199,7 +218,6 @@ export default function ChatAI() {
 
                 {currentFaq.length > 0 && (
                     <div className="w-full space-y-2 mb-2">
-                        {/* Zwiększona czcionka nagłówka z 9px na 10px */}
                         <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] block text-center mb-3">Szybka pomoc merytoryczna:</span>
                         {currentFaq.map(faq => (
                             <button key={faq.id} onClick={() => handleManualSend(faq)} className="w-full py-3 px-4 bg-zinc-900/50 border border-zinc-800/80 rounded-xl text-zinc-300 text-[12px] font-bold uppercase hover:border-amber-400/50 hover:bg-amber-400/5 hover:text-amber-400 transition-all text-left flex items-center justify-between group">
