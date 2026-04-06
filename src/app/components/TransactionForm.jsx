@@ -173,27 +173,29 @@ export default function TransactionForm({
     if (canPickAsset && !pair?.yahoo) return setError("Wybierz spółkę/ETF z listy.");
 
     let effDate = date;
-    if (isWeekend(effDate)) {
-      effDate = prevWeekday(effDate);
-    }
-
     let effPricePLN = pricePLN;
 
-    if (isWeekend(date) || !Number.isFinite(priceN) || priceN <= 0) {
+    // POBIERAMY CENĘ Z API TYLKO WTEDY, GDY UŻYTKOWNIK JEJ NIE WPISAŁ (priceN <= 0)
+    if (!Number.isFinite(priceN) || priceN <= 0) {
       try {
-        const snap = await snapToLastClose({ pair: { yahoo: pair?.yahoo }, targetDate: effDate });
+        let fetchDate = effDate;
+        if (isWeekend(fetchDate)) {
+          fetchDate = prevWeekday(fetchDate);
+        }
+
+        const snap = await snapToLastClose({ pair: { yahoo: pair?.yahoo }, targetDate: fetchDate });
         if (snap && Number.isFinite(snap.price)) {
-          effDate = snap.dateISO || effDate;
+          effDate = snap.dateISO || fetchDate;
           effPricePLN = Number(snap.price);
           setCcy("PLN");
-          setVerifyMsg(`Użyto kursu z ${effDate}: ${effPricePLN.toFixed(2)} PLN`);
+          setVerifyMsg(`Brak ręcznej ceny. Użyto kursu z zamknięcia (${effDate}): ${effPricePLN.toFixed(2)} PLN`);
         }
       } catch {
       }
     }
 
     if (qtyN <= 0 || !Number.isFinite(effPricePLN) || effPricePLN <= 0) {
-      return setError("Podaj dodatnie: ilość i cenę (lub wybierz prawidłową datę).");
+      return setError("Podaj dodatnie: ilość i cenę (lub upewnij się, że system może pobrać cenę zamknięcia).");
     }
 
     const effGross = qtyN * effPricePLN;
@@ -226,7 +228,7 @@ export default function TransactionForm({
           shares: qtyN,
           buyPrice: effPricePLN,   
           buyDate: effDate,        
-          note: thesis, // <--- Przekazujemy notatkę użytkownika do store!
+          note: thesis, 
         },
         { autoTopUp: false, topUp: topUpVal }
       );
@@ -269,8 +271,13 @@ export default function TransactionForm({
           <label className="muted text-sm">Data</label>
           <div className="relative">
             <input type="date" className="input w-full" value={date} onChange={(e) => setDate(e.target.value)} />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-400"></span>
           </div>
+          {/* NOWY KOMUNIKAT DLA WEEEKENDU */}
+          {isWeekend(date) && (
+            <div className="text-[10px] text-yellow-500 font-medium leading-tight mt-1.5 px-1">
+              Uwaga: Wybrany dzień to weekend. Transakcja zostanie zapisana z Twoją własną ceną i datą.
+            </div>
+          )}
         </div>
       </div>
 
@@ -421,7 +428,7 @@ export default function TransactionForm({
                 </div>
               </div>
 
-              {/* DODANE: PAMIĘTNIK INWESTORA */}
+              {/* PAMIĘTNIK INWESTORA */}
               <div className="rounded-lg border border-zinc-700 p-3">
                 <label className="text-sm text-zinc-400 mb-2 flex items-center gap-2">
                   <span>Pamiętnik inwestora (Teza inwestycyjna)</span>

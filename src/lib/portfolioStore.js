@@ -62,7 +62,7 @@ function cashflowsCol(uid, portfolioId = null) {
 }
 
 /* =========================================================
-   HOLDINGS (pozycje)
+   HOLDINGS (pozycje) - PRZYWRÓCONA BEZPIECZNA WERSJA ORYGINALNA
    ========================================================= */
 
 export function listenHoldings(uid, a, b) {
@@ -121,7 +121,7 @@ export function listenHoldings(uid, a, b) {
               buyDate: r.buyDate || null,
               currency: r.currency || "PLN",
               prevClose: Number(r.prevClose) || 0,
-              note: r.note || null, // <--- DODANE (Pamiętnik)
+              note: r.note || null, 
             });
           });
           emit(mapped);
@@ -196,7 +196,7 @@ export async function addHolding(uid, a, b, c) {
     shares,
     buyPrice: price,
     buyDate: item.buyDate || isoLocal(new Date()),
-    note: item.note || null, // <--- DODANE (Pamiętnik inwestora zapisany do Firestore)
+    note: item.note || null, 
 
     ts: serverTimestamp(),
     meta: {
@@ -809,10 +809,15 @@ export function listenPortfolioValue(uid, scope, opts = {}) {
     if (!uid) { try { callback(0); } catch {} ; return () => {}; }
 
     if (scope === "__ALL__") {
-      const ids = Array.isArray(opts.portfolioIds)
+      const rawIds = Array.isArray(opts.portfolioIds)
         ? Array.from(new Set(opts.portfolioIds.map(x => (normPortfolioId(x) ?? ""))))
         : [];
-      if (!ids.includes("")) ids.unshift("");
+      
+      // JEDNA LINIA, KTÓRA NAPRAWIA BŁĄD 52 TYSIĘCY (x2)!
+      // Jeśli mamy nazwane portfele (IKE), odcinamy stary folder (""). 
+      // Jeśli nie mamy (nowy user), używamy starego ("").
+      const namedIds = rawIds.filter(id => id !== "");
+      const finalIds = namedIds.length > 0 ? namedIds : [""];
 
       const map = new Map();
       const unsubs = [];
@@ -822,7 +827,7 @@ export function listenPortfolioValue(uid, scope, opts = {}) {
         try { callback(sum); } catch {}
       };
 
-      for (const pid of ids) {
+      for (const pid of finalIds) {
         const off = onSnapshot(
           _liveValueDoc(uid, pid || null),
           (snap) => {
@@ -848,7 +853,6 @@ export function listenPortfolioValue(uid, scope, opts = {}) {
   };
 }
 
-// --- DODANA FUNKCJA: Zapis tezy do Firebase ---
 export async function updateHoldingNote(uid, portfolioId, holdingId, note) {
   if (!uid || !holdingId) return;
   

@@ -168,7 +168,11 @@ function normalizeSeriesMap(rawMap, holdings) {
   for (const id of Object.keys(rawMap)) {
     const s = rawMap[id] || { history: [], shares: 0 };
     const bd = byIdDate.get(id);
-    out[id] = { shares: s.shares, history: forwardFillOnDays(s.history, days, bd) };
+    out[id] = { 
+      shares: s.shares, 
+      history: forwardFillOnDays(s.history, days, bd),
+      rawHistory: s.history 
+    };
   }
   return out;
 }
@@ -180,6 +184,9 @@ function priceNowFrom({ quote, hist, avgBuy, buyPrice }) {
     : (Number.isFinite(quote?.price) ? quote.price : null);
   if (Number.isFinite(live) && live > 0) return live;
 
+  const prev = Number.isFinite(quote?.prevClosePLN) ? quote.prevClosePLN : null;
+  if (Number.isFinite(prev) && prev > 0) return prev;
+
   let lastFromHist = null;
   if (Array.isArray(hist) && hist.length) {
     for (let i = hist.length - 1; i >= 0; i--) {
@@ -188,9 +195,6 @@ function priceNowFrom({ quote, hist, avgBuy, buyPrice }) {
     }
   }
   if (Number.isFinite(lastFromHist) && lastFromHist > 0) return lastFromHist;
-
-  const prev = Number.isFinite(quote?.prevClosePLN) ? quote.prevClosePLN : null;
-  if (Number.isFinite(prev) && prev > 0) return prev;
 
   const approx = Number.isFinite(avgBuy) && avgBuy > 0
     ? avgBuy
@@ -511,7 +515,7 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
       let price = 0;
       for (const lot of g.lots) {
         const q    = quotes[lot.id];
-        const hist = series[lot.id]?.history || [];
+        const hist = series[lot.id]?.rawHistory || series[lot.id]?.history || [];
         price = priceNowFrom({ quote: q, hist, avgBuy, buyPrice: lot.buyPrice });
         if (price > 0) break;
       }
@@ -663,7 +667,7 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
         </p>
       </section>
 
-      {missingDataRatio > 0.5 && (
+      {missingDataRatio > 0.5 && holdings.length > 0 && (
         <div className="mb-4 rounded-lg border border-yellow-600/50 bg-yellow-900/20 px-3 py-2 text-sm text-yellow-300">
           Brakuje cen z API dla większości pozycji (wykresy mogą być puste).
           Sprawdź odpowiedzi <code>/api/quote</code> i <code>/api/history</code>.
@@ -773,35 +777,86 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
         </div>
       </section>
 
-      {/* Wykres */}
-      <section className="card mb-4">
-        <div className="card-inner">
-          <h3 className="h2 mb-2">Wartość portfela (PLN)</h3>
-          <PortfolioChart
-            seriesBySymbol={Object.fromEntries(
-              holdings.map((h) => [
-                h.id,
-                series[h.id] || { history: [], shares: h.shares },
-              ])
-            )}
-            height={240}
-            longRange={["6M", "YTD", "1R", "5L", "MAX"].includes(rangeKey)}
-          />
-        </div>
-      </section>
+      {/* GŁÓWNA ZAWARTOŚĆ (Wykres + Tabela) LUB EKRAN POWITALNY (Empty State) */}
+      {!loading && holdings.length === 0 ? (
+        <section className="flex flex-col items-center justify-center py-16 px-4 text-center border-2 border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20 my-8">
+          <div className="w-16 h-16 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center mb-5 shadow-lg">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-yellow-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </div>
+          
+          {portfolioList.length === 0 ? (
+            <>
+              <h3 className="text-2xl font-black text-white mb-3 tracking-wide">Witaj w swoim nowym portfelu!</h3>
+              <p className="text-zinc-400 max-w-lg mb-8 leading-relaxed text-sm">
+                Aby zacząć śledzić swoje inwestycje, musisz najpierw utworzyć swój pierwszy portfel (np. IKE, IKZE, Konto Maklerskie), a następnie dodać do niego aktywa.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl w-full">
+                <div className="bg-black/40 border border-zinc-800 rounded-xl p-5 text-left relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500/50 group-hover:bg-yellow-500 transition-colors"></div>
+                  <div className="text-yellow-500 font-black text-[10px] uppercase tracking-widest mb-2">Krok 1</div>
+                  <div className="text-sm text-zinc-300">Rozwiń menu <strong className="text-white">"Wszystkie portfele"</strong> po prawej stronie i dodaj swój pierwszy portfel.</div>
+                </div>
+                <div className="bg-black/40 border border-zinc-800 rounded-xl p-5 text-left relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-zinc-700 group-hover:bg-yellow-500 transition-colors"></div>
+                  <div className="text-zinc-500 font-black text-[10px] uppercase tracking-widest mb-2">Krok 2</div>
+                  <div className="text-sm text-zinc-300">Wybierz nowo utworzony portfel i kliknij żółty przycisk <strong className="text-white">"Dodaj transakcję"</strong>.</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-2xl font-black text-white mb-3 tracking-wide">Ten portfel jest pusty</h3>
+              <p className="text-zinc-400 max-w-md mb-6 leading-relaxed text-sm">
+                Masz już utworzony portfel, ale nie ma w nim jeszcze żadnych aktywów.
+              </p>
+              {currentPortfolioId === ALL_PORTFOLIO_ID ? (
+                <div className="bg-black/40 border border-zinc-800 rounded-xl p-5 text-sm text-zinc-300 max-w-md">
+                  Wybierz konkretny portfel (np. IKE) z menu rozwijanego powyżej, aby odblokować przycisk dodawania akcji.
+                </div>
+              ) : (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 text-sm text-yellow-200/80 max-w-md">
+                  Kliknij przycisk <strong className="text-yellow-500">"Dodaj transakcję"</strong> powyżej, aby wprowadzić swoje pierwsze akcje do tego portfela.
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      ) : (
+        <>
+          {/* Wykres */}
+          <section className="card mb-4">
+            <div className="card-inner">
+              <h3 className="h2 mb-2">Wartość portfela (PLN)</h3>
+              <PortfolioChart
+                seriesBySymbol={Object.fromEntries(
+                  holdings.map((h) => [
+                    h.id,
+                    series[h.id] || { history: [], shares: h.shares },
+                  ])
+                )}
+                height={240}
+                longRange={["6M", "YTD", "1R", "5L", "MAX"].includes(rangeKey)}
+              />
+            </div>
+          </section>
 
-      <PortfolioTable
-        groups={groups}
-        expanded={expanded}
-        onToggle={(key) => {
-          const s = new Set(expanded);
-          s.has(key) ? s.delete(key) : s.add(key);
-          setExpanded(s);
-        }}
-        onOpenFix={(lot, group) =>
-          setFixLot({ lot, lots: [lot], group })
-        }
-      />
+          {/* Tabela */}
+          <PortfolioTable
+            groups={groups}
+            expanded={expanded}
+            onToggle={(key) => {
+              const s = new Set(expanded);
+              s.has(key) ? s.delete(key) : s.add(key);
+              setExpanded(s);
+            }}
+            onOpenFix={(lot, group) =>
+              setFixLot({ lot, lots: [lot], group })
+            }
+          />
+        </>
+      )}
 
       {/* Modal: Edycja i Cofanie */}
       {fixLot && (
