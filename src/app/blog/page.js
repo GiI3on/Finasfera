@@ -4,6 +4,10 @@ import { ArrowRight, BookOpen } from "lucide-react";
 export const metadata = {
   title: "Blog o FIRE i Inwestowaniu — Finasfera",
   description: "Praktyczne poradniki o wolności finansowej (FIRE), inwestowaniu w Polsce i optymalizacji podatkowej.",
+  // ⬇⬇ DODANE SEO - Strona Kanoniczna
+  alternates: {
+    canonical: 'https://finasfera.pl/blog',
+  },
 };
 
 // Tablica ze wszystkimi artykułami

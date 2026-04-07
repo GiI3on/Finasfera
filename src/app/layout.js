@@ -31,6 +31,10 @@ const ChatAI = dynamic(
 
 // 🔹 SEO + Open Graph + Weryfikacja
 export const metadata = {
+  metadataBase: new URL("https://finasfera.pl"),
+  alternates: {
+    canonical: "/",
+  },
   title: "Finasfera — Kalkulator FIRE i tracker portfela",
   description:
     "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, zaplanuj bezpieczną emeryturę i sprawdź przewidywania ZUS.",
@@ -40,8 +44,8 @@ export const metadata = {
     "FIRE",
     "finansowa niezależność",
     "kalkulator inwestycyjny",
-    "kalkulator emerytalny", // <-- Dodane dla SEO
-    "symulacja emerytury",   // <-- Dodane dla SEO
+    "kalkulator emerytalny",
+    "symulacja emerytury",  
     "portfel inwestycyjny",
     "forum finansowe",
   ],
