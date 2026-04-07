@@ -13,7 +13,14 @@ export const metadata = {
 // Tablica ze wszystkimi artykułami
 const articles = [
   {
-    slug: "jak-zaczac-inwestowac", // <--- TUTAJ NAZWA FOLDERU Z NOWYM ARTYKUŁEM
+    slug: "symulacja-monte-carlo-emerytura", 
+    title: "Symulacja Monte Carlo dla emerytury: dlaczego zwykły kalkulator kłamie?",
+    excerpt: "Zwykły kalkulator zakłada stały zwrot 7% rocznie. Rynek tak nie działa. Poznaj ryzyko sekwencji stóp zwrotu (SoRR) i sprawdź, dlaczego do planowania wczesnej emerytury (FIRE) w Polsce potrzebujesz symulacji Monte Carlo.",
+    date: "7 Kwietnia 2026",
+    readTime: "6 min czytania",
+  },
+  {
+    slug: "jak-zaczac-inwestowac",
     title: "Jak zacząć inwestować w Polsce: Przewodnik z kapitałem od 500 zł",
     excerpt: "Prawda jest taka, że dzisiaj próg wejścia w świat finansów jest najniższy w historii. Dowiedz się, jak wykorzystać procent składany, ETF-y i konta IKE/IKZE do budowania kapitału.",
     date: "Kwiecień 2026",
