@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen } from "lucide-react";
 export const metadata = {
   title: "Blog o FIRE i Inwestowaniu — Finasfera",
   description: "Praktyczne poradniki o wolności finansowej (FIRE), inwestowaniu w Polsce i optymalizacji podatkowej.",
-  // ⬇⬇ DODANE SEO - Strona Kanoniczna
+  // DODANE SEO - Strona Kanoniczna
   alternates: {
     canonical: 'https://finasfera.pl/blog',
   },
@@ -12,6 +12,13 @@ export const metadata = {
 
 // Tablica ze wszystkimi artykułami
 const articles = [
+  {
+    slug: "limit-wplat-ike-2026",
+    title: "Limit wpłat na IKE w 2026 roku – co oznaczają liczby dla młodego inwestora?",
+    excerpt: "Limit na IKE w 2026 roku to ponad 28 tys. zł. To jednak sufit, a nie podłoga! Przeczytaj, dlaczego wpłacając nawet 500 zł miesięcznie, możesz oszczędzić ponad 260 000 zł na podatku Belki.",
+    date: "14 Kwietnia 2026",
+    readTime: "7 min czytania",
+  },
   {
     slug: "symulacja-monte-carlo-emerytura", 
     title: "Symulacja Monte Carlo dla emerytury: dlaczego zwykły kalkulator kłamie?",
