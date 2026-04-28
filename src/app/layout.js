@@ -1,15 +1,10 @@
 import "./globals.css";
 import dynamic from "next/dynamic";
 
-// ⬇⬇ Importy dynamiczne komponentów klienckich
-const AuthProvider = dynamic(
-  () =>
-    import("./components/AuthProvider").then(
-      (m) => m.default ?? m.AuthProvider ?? ((p) => p.children)
-    ),
-  { ssr: false }
-);
+// === POPRAWKA SEO: Zwykły import zamiast dynamicznego z ssr: false ===
+import AuthProvider from "./components/AuthProvider";
 
+// ⬇⬇ Importy dynamiczne komponentów klienckich (te mogą zostać bez SSR)
 const TopNav = dynamic(
   () => import("./components/TopNav").then((m) => m.default ?? m.TopNav),
   { ssr: false }
@@ -23,7 +18,6 @@ const CookieBanner = dynamic(
   { ssr: false }
 );
 
-// --- NOWOŚĆ: Twój Asystent AI ---
 const ChatAI = dynamic(
   () => import("./components/ChatAI").then((m) => m.default ?? m.ChatAI),
   { ssr: false }
