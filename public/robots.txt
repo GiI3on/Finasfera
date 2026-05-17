@@ -1,11 +1,6 @@
 User-agent: *
 Allow: /
 
-# Blokada wewnętrznych folderów (Next.js i API)
-Disallow: /api/
-Disallow: /_next/
-Disallow: /static/
-
 # Mapa witryny
 Sitemap: https://finasfera.pl/sitemap.xml
 

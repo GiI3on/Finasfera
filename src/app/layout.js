@@ -32,9 +32,6 @@ const ChatAI = dynamic(
 // 🔹 SEO + Open Graph + Weryfikacja
 export const metadata = {
   metadataBase: new URL("https://finasfera.pl"),
-  alternates: {
-    canonical: "/",
-  },
   title: "Finasfera — Kalkulator FIRE i tracker portfela",
   description:
     "Oblicz kiedy osiągniesz wolność finansową. Śledź portfel, zaplanuj bezpieczną emeryturę i sprawdź przewidywania ZUS.",
