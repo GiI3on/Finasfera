@@ -1,4 +1,19 @@
-"use client";
+// src/app/cookies/page.js
+// FIX: Usunięto "use client" — strona jest czysto prezentacyjna,
+// nie wymaga hooków React. Metadata teraz działa poprawnie.
+
+export const metadata = {
+  title: "Polityka plików cookies",
+  description:
+    "Polityka plików cookies serwisu Finasfera.pl — dowiedz się, jakich ciasteczek używamy i jak nimi zarządzać.",
+  alternates: {
+    canonical: "https://finasfera.pl/cookies",
+  },
+  robots: {
+    index: true,
+    follow: false, // Strona prawna — indeksujemy, ale nie chcemy linkowania wewnętrznego
+  },
+};
 
 export default function PolitykaCookiesPage() {
   return (
@@ -13,63 +28,74 @@ export default function PolitykaCookiesPage() {
         <strong>Finasfera.pl</strong>.
       </p>
 
-      <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
-        1. Czym są pliki cookies
-      </h2>
-      <p className="mb-4">
-        Cookies (tzw. ciasteczka) to niewielkie pliki tekstowe zapisywane w
-        urządzeniu końcowym użytkownika, które umożliwiają korzystanie z funkcji
-        serwisu oraz pomagają analizować jego działanie.
-      </p>
+      <section>
+        <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
+          1. Czym są pliki cookies
+        </h2>
+        <p className="mb-4">
+          Cookies (tzw. ciasteczka) to niewielkie pliki tekstowe zapisywane w
+          urządzeniu końcowym użytkownika, które umożliwiają korzystanie z
+          funkcji serwisu oraz pomagają analizować jego działanie.
+        </p>
+      </section>
 
-      <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
-        2. Rodzaje wykorzystywanych cookies
-      </h2>
-      <ul className="list-disc list-inside mb-4 space-y-2">
-        <li>Cookies techniczne – niezbędne do prawidłowego działania strony.</li>
-        <li>
-          Cookies analityczne – wykorzystywane do anonimowej analizy ruchu
-          (np. Google Analytics).
-        </li>
-        <li>
-          Cookies funkcjonalne – pozwalają zapamiętać preferencje użytkownika,
-          np. motyw ciemny/jasny.
-        </li>
-      </ul>
+      <section>
+        <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
+          2. Rodzaje wykorzystywanych cookies
+        </h2>
+        <ul className="list-disc list-inside mb-4 space-y-2">
+          <li>Cookies techniczne – niezbędne do prawidłowego działania strony.</li>
+          <li>
+            Cookies analityczne – wykorzystywane do anonimowej analizy ruchu
+            (np. Google Analytics).
+          </li>
+          <li>
+            Cookies funkcjonalne – pozwalają zapamiętać preferencje użytkownika,
+            np. motyw ciemny/jasny.
+          </li>
+        </ul>
+      </section>
 
-      <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
-        3. Zarządzanie cookies
-      </h2>
-      <p className="mb-4">
-        Użytkownik może w dowolnym momencie zmienić ustawienia dotyczące
-        plików cookies w swojej przeglądarce internetowej – np. zablokować ich
-        automatyczną obsługę lub usuwać zapisane pliki. Wyłączenie cookies może
-        jednak ograniczyć niektóre funkcje serwisu.
-      </p>
+      <section>
+        <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
+          3. Zarządzanie cookies
+        </h2>
+        <p className="mb-4">
+          Użytkownik może w dowolnym momencie zmienić ustawienia dotyczące
+          plików cookies w swojej przeglądarce internetowej – np. zablokować ich
+          automatyczną obsługę lub usuwać zapisane pliki. Wyłączenie cookies
+          może jednak ograniczyć niektóre funkcje serwisu.
+        </p>
+      </section>
 
-      <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
-        4. Narzędzia zewnętrzne
-      </h2>
-      <p className="mb-4">
-        Serwis Finasfera.pl może korzystać z usług analitycznych lub hostingowych
-        dostarczanych przez podmioty trzecie (np. Google, Vercel, Firebase),
-        które mogą stosować własne cookies zgodnie ze swoimi politykami
-        prywatności.
-      </p>
+      <section>
+        <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
+          4. Narzędzia zewnętrzne
+        </h2>
+        <p className="mb-4">
+          Serwis Finasfera.pl może korzystać z usług analitycznych lub
+          hostingowych dostarczanych przez podmioty trzecie (np. Google, Vercel,
+          Firebase), które mogą stosować własne cookies zgodnie ze swoimi
+          politykami prywatności.
+        </p>
+      </section>
 
-      <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
-        5. Kontakt
-      </h2>
-      <p className="mb-4">
-        W przypadku pytań dotyczących polityki cookies prosimy o kontakt na adres{" "}
-        <a
-          href="mailto:kontakt.finasfera@gmail.com"
-          className="text-yellow-400 underline"
-        >
-          kontakt.finasfera@gmail.com
-        </a>
-        .
-      </p>
+      <section>
+        <h2 className="text-xl font-semibold mt-8 mb-3 text-yellow-300">
+          5. Kontakt
+        </h2>
+        <p className="mb-4">
+          W przypadku pytań dotyczących polityki cookies prosimy o kontakt na
+          adres{" "}
+          <a
+            href="mailto:kontakt.finasfera@gmail.com"
+            className="text-yellow-400 underline"
+          >
+            kontakt.finasfera@gmail.com
+          </a>
+          .
+        </p>
+      </section>
 
       <p className="mt-6 text-sm text-zinc-500">
         Ostatnia aktualizacja: październik 2025 r.

@@ -1,4 +1,19 @@
-"use client";
+// src/app/zastrzezenie/page.js
+// FIX: Usunięto "use client" — strona jest czysto prezentacyjna.
+// Metadata teraz działa i Google widzi poprawny tytuł/opis.
+
+export const metadata = {
+  title: "Zastrzeżenie inwestycyjne",
+  description:
+    "Zastrzeżenie inwestycyjne serwisu Finasfera.pl. Treści publikowane na stronie mają charakter edukacyjny i nie stanowią rekomendacji inwestycyjnych.",
+  alternates: {
+    canonical: "https://finasfera.pl/zastrzezenie",
+  },
+  robots: {
+    index: true,
+    follow: false,
+  },
+};
 
 export default function ZastrzezeniePage() {
   return (
