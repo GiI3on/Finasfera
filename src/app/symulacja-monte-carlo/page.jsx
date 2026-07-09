@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import InputPanel from "../components/monteCarlo/InputPanel";
 import ResultsPanel from "../components/monteCarlo/ResultsPanel";
 import Link from "next/link";
+import SeoLandingSection from "../components/SeoLandingSection";
 
 export default function MonteCarloPage() {
   const [isCalculating, setIsCalculating] = useState(false);
@@ -219,6 +220,62 @@ export default function MonteCarloPage() {
         </section>
 
       </main>
+
+      <SeoLandingSection
+        title="Symulacja Monte Carlo — dlaczego to jedyna właściwa metoda planowania emerytury?"
+        description="Zaawansowane kalkulatory emerytalne używane przez fundusze emerytalne i banki od lat 90. opierają się na symulacji Monte Carlo. Teraz masz do niej dostęp bezpłatnie — bez potrzeby zatrudniania doradcy finansowego."
+        features={[
+          {
+            icon: "🎲",
+            title: "Na czym polega Symulacja Monte Carlo?",
+            body: "Algorytm Monte Carlo nie zakłada stałej stopy zwrotu 7% rocznie. Zamiast tego losuje 1000 różnych ścieżek rynkowych — z latami hossy, bessy i stagflacji — i sprawdza, w ilu z nich Twój kapitał wystarczy do końca planowanego horyzontu. Wynik to prawdopodobieństwo sukcesu: np. '87% szans, że pieniądze wystarczą na 30 lat'.",
+          },
+          {
+            icon: "📉",
+            title: "Ryzyko Sekwencji Stóp Zwrotu (SoRR)",
+            body: "Największe zagrożenie dla emeryta to nie niska średnia stopa zwrotu, lecz jej kolejność. Jeśli na początku emerytury trafisz na wielki krach (jak 2008), a jednocześnie wypłacasz środki na życie, Twój kapitał spada zbyt szybko, by odrobić straty gdy rynek się odbija. Monte Carlo symuluje tysiące takich kolejności i szacuje realną granicę bezpiecznych wypłat.",
+          },
+          {
+            icon: "🇵🇱",
+            title: "Polska specyfika: ZUS jako bufor bezpieczeństwa",
+            body: "Nawet skromna emerytura z ZUS (np. 2000 zł miesięcznie od 65. roku życia) dramatycznie zmienia matematykę wczesnej emerytury. Nasz kalkulator pozwala uwzględnić ten 'bufor ZUS', pokazując że możesz potrzebować znacznie mniejszego kapitału prywatnego niż sugerują amerykańskie kalkulatory.",
+          },
+          {
+            icon: "💡",
+            title: "Bezpieczna Stopa Wypłat (SWR) dla Polski",
+            body: "Słynna reguła 4% pochodzi z badania Trinity Study opartego na danych USA 1926–1995. Dla polskiego inwestora, z wyższą historyczną inflacją i innymi ryzykami walutowymi, eksperci sugerują konserwatywnszą bezpieczną stopę: 3,2–3,5%. Nasz algorytm oblicza ją indywidualnie dla Twoich danych.",
+          },
+          {
+            icon: "📊",
+            title: "Trzy kluczowe wyniki symulacji",
+            body: "Algorytm zwraca: (1) Prawdopodobieństwo sukcesu — procent scenariuszy, w których nie zabraknie Ci pieniędzy. (2) Bezpieczna kwota wypłaty miesięcznej — maksymalna kwota z 90%+ szansą powodzenia. (3) Mediana portfela po 30 latach — ile kapitału prawdopodobnie pozostawi Twój portfel dla spadkobierców.",
+          },
+          {
+            icon: "🏦",
+            title: "IKE i IKZE a symulacja emerytalna",
+            body: "Konta emerytalne IKE i IKZE fundamentalnie zmieniają trajektorię kapitału emerytalnego. Brak podatku Belki (19%) na IKE przez 30 lat oznacza, że ta sama kwota miesięczna daje o 30–40% wyższy kapitał końcowy. Uwzględnij konta IKE/IKZE w swoich symulacjach, żeby zobaczyć realną skalę korzyści.",
+          },
+        ]}
+        faq={[
+          {
+            q: "Jaki procent szansy na sukces powinienem celować?",
+            a: "Eksperci finansowi zalecają celowanie w prawdopodobieństwo sukcesu na poziomie 85–95%. Wyższy wynik (np. 99%) oznacza, że planujesz zbyt konserwatywnie i prawdopodobnie niepotrzebnie ograniczysz swój standard życia na emeryturze. Niższy wynik (np. 70%) niesie zbyt duże ryzyko wyczerpania kapitału przed końcem życia.",
+          },
+          {
+            q: "Czy symulacja uwzględnia inflację?",
+            a: "Tak. Algorytm używa historycznych danych o inflacji i symuluje scenariusze z różnymi jej poziomami — od deflacji do inflacji galopującej (jak w Polsce w latach 2021–2023). Wyniki są prezentowane w realnej sile nabywczej, czyli wartościach dzisiejszych złotówek, co pozwala uniknąć złudnego efektu 'nominalnego milionera'.",
+          },
+          {
+            q: "Ile kapitału muszę mieć, żeby przejść na wczesną emeryturę w Polsce?",
+            a: "Dla 30-letniego horyzontu emerytalnego (np. od 45. do 75. roku życia) przy wydatkach 5000 zł miesięcznie i emeryturze ZUS 2000 zł od 65. roku życia, potrzebujesz typowo 700 000–1 200 000 zł kapitału prywatnego (w zależności od przyjętej stopy wypłat i składu portfela). Dokładną kwotę oblicz za pomocą naszego symulatora.",
+          },
+          {
+            q: "Czym różni się kalkulator Monte Carlo od zwykłego kalkulatora procentu składanego?",
+            a: "Zwykły kalkulator zakłada stały wzrost 7% każdego roku — co jest matematyczną fikcją. Rynki mają lata +30% i lata -40%. Kolejność tych wyników ma ogromne znaczenie dla emeryta, który jednocześnie wypłaca środki. Monte Carlo testuje Twój plan na wszystkie możliwe sekwencje rynkowe i mówi wprost: 'masz X% szans, że pieniądze wystarczą'.",
+          },
+        ]}
+        cta={{ label: "Czytaj: Dlaczego zwykły kalkulator kłamie →", href: "/blog/symulacja-monte-carlo-emerytura" }}
+      />
     </>
   );
 }

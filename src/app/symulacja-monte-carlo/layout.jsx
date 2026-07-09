@@ -7,6 +7,7 @@ export const metadata = {
   alternates: {
     canonical: "https://finasfera.pl/symulacja-monte-carlo",
   },
+  robots: { index: true, follow: true },
   openGraph: {
     title: "Kalkulator Emerytalny — Symulacja Monte Carlo | Finasfera",
     description:

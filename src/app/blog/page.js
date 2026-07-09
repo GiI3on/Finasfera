@@ -13,6 +13,13 @@ export const metadata = {
 // Tablica ze wszystkimi artykułami
 const articles = [
   {
+    slug: "jakie-etfy-kupic-xtb-mbank-bos",
+    title: "Jakie ETF-y kupić na XTB, mBank i BOŚ? Przewodnik po tickerach i podatkach (2026)",
+    excerpt: "Zgubiony w gąszczu tickerów? Sprawdź, jak znaleźć najpopularniejsze ETF-y na S&P 500 i cały świat u polskich brokerów. Poznaj różnice między Acc i Dist oraz kwestie podatkowe.",
+    date: "9 Lipca 2026",
+    readTime: "8 min czytania",
+  },
+  {
     slug: "limit-wplat-ike-2026",
     title: "Limit wpłat na IKE w 2026 roku – co oznaczają liczby dla młodego inwestora?",
     excerpt: "Limit na IKE w 2026 roku to ponad 28 tys. zł. To jednak sufit, a nie podłoga! Przeczytaj, dlaczego wpłacając nawet 500 zł miesięcznie, możesz oszczędzić ponad 260 000 zł na podatku Belki.",

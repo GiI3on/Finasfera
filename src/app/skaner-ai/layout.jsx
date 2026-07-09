@@ -7,6 +7,7 @@ export const metadata = {
   alternates: {
     canonical: "https://finasfera.pl/skaner-ai",
   },
+  robots: { index: true, follow: true },
   openGraph: {
     title: "Audyt Portfela AI — Skaner Inwestycyjny | Finasfera",
     description:

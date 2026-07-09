@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import SeoLandingSection from "../components/SeoLandingSection";
 
 /* === auth + UI === */
 import { useAuth } from "../components/AuthProvider";
@@ -2053,6 +2054,61 @@ export default function Page() {
           {/* Dywidendy */}
           <DividendsSection uid={user?.uid} portfolioId={portfolioIdForFirestore} currentPortfolioValuePLN={holdingsValueNow} />
         </>
+      )}
+
+      {/* SEO: sekcja edukacyjna widoczna dla Googlebota w trybie demo */}
+      {!user && (
+        <SeoLandingSection
+          title="Jak analizować wyniki portfela inwestycyjnego?"
+          description="Profesjonalne narzędzie do analizy portfela inwestycyjnego Finasfera dostarcza statystyki, które do niedawna były dostępne tylko w bankach prywatnych. Sprawdź, co oznaczają kluczowe wskaźniki i jak je interpretować."
+          features={[
+            {
+              icon: "📊",
+              title: "CAGR — Skumulowana Roczna Stopa Wzrostu",
+              body: "CAGR (Compound Annual Growth Rate) to annualizowana stopa zwrotu uwzględniająca efekt procentu składanego. Pokazuje, o ile procent rocznie rósł Twój portfel, eliminując wpływ zmienności w poszczególnych latach. CAGR 10% oznacza, że portfel podwaja wartość co 7,2 roku (reguła 72).",
+            },
+            {
+              icon: "📉",
+              title: "Max Drawdown — Maksymalne Obsunięcie",
+              body: "Max Drawdown (MDD) to największy procentowy spadek wartości portfela od szczytu do dołka w badanym okresie. Wskaźnik ten mierzy rzeczywiste ryzyko straty — jeśli portfel osiągnął 100 000 zł i spadł do 70 000 zł, MDD wynosi 30%. Im mniejszy MDD, tym bardziej odporna jest Twoja strategia na rynkowe krachy.",
+            },
+            {
+              icon: "⚖️",
+              title: "Wskaźnik Sharpe'a — Ryzyko vs Zysk",
+              body: "Sharpe Ratio mierzy, ile zysku generuje portfel na każdą jednostkę podjętego ryzyka (liczonego jako odchylenie standardowe dziennych stóp zwrotu). Sharpe > 1 oznacza świetny stosunek ryzyko/zysk; Sharpe < 0,5 to słaby wynik. Portfele z Sharpe > 2 są uważane za wybitne.",
+            },
+            {
+              icon: "🔄",
+              title: "TWR — Czas-Ważona Stopa Zwrotu",
+              body: "Time-Weighted Return (TWR) to standard stosowany przez fundusze inwestycyjne. Eliminuje wpływ wielkości i czasu wpłat/wypłat na wynik, dzięki czemu możesz rzetelnie porównać swój portfel z dowolnym benchmarkiem (np. S&P 500 czy WIG20TR), nawet jeśli regularnie wpłacasz pieniądze.",
+            },
+            {
+              icon: "📈",
+              title: "Benchmarki — z czym się porównujesz?",
+              body: "Porównanie z benchmarkiem (np. S&P 500 lub WIG20TR) pokazuje, czy Twoja strategia aktywna przynosi lepsze wyniki niż pasywne inwestowanie w indeks. Badania SPIVA pokazują, że ponad 90% aktywnie zarządzanych funduszy przegrywa z indeksem w perspektywie 15-letniej.",
+            },
+            {
+              icon: "💰",
+              title: "Dywidendy i cashflow z portfela",
+              body: "Sekcja dywidend pokazuje zrealizowane przychody pasywne z posiadanych akcji i ETF-ów dystrybucyjnych. To szczególnie ważne dla inwestorów budujących portfel dochodowy — możesz śledzić, jak rośnie Twój miesięczny cashflow w PLN.",
+            },
+          ]}
+          faq={[
+            {
+              q: "Jak interpretować wskaźnik Sharpe Ratio?",
+              a: "Sharpe Ratio poniżej 0 oznacza, że portfel zarabia mniej niż stopa wolna od ryzyka (np. lokaty). Wynik 0–1 to przeciętny rezultat, 1–2 to dobry wynik, powyżej 2 to doskonały. W praktyce w długim terminie najtrudniejsze jest utrzymanie Sharpe powyżej 1 — nawet najlepsze fundusze hedgingowe rzadko osiągają Sharpe >2 konsekwentnie.",
+            },
+            {
+              q: "Dlaczego mój zysk w procentach różni się od prostego wyliczenia (wartość końcowa / wpłacony kapitał)?",
+              a: "Aplikacja oblicza TWR (Time-Weighted Return), który eliminuje wpływ Twoich decyzji o czasie wpłat na wynik. Jeśli wpłaciłeś dużą kwotę tuż przed spadkami, prosty zysk będzie niski, ale TWR pokaże 'czysty' wynik rynkowy. TWR jest standardem branżowym używanym do porównywania portfeli z benchmarkami.",
+            },
+            {
+              q: "Co to znaczy, że portfel jest 'dobrze zdywersyfikowany'?",
+              a: "Dobra dywersyfikacja oznacza, że żadna pojedyncza pozycja nie stanowi więcej niż 20-25% portfela i że portfel jest rozłożony na różne sektory i rynki geograficzne. Wykres alokacji w aplikacji pokazuje koncentrację w podziale na klasy aktywów (akcje, obligacje, gotówka), sektory i kraje.",
+            },
+          ]}
+          cta={{ label: "Zaloguj się i analizuj swój portfel →", href: "/moj-portfel" }}
+        />
       )}
     </main>
   );

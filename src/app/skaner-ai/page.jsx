@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import SeoLandingSection from '../components/SeoLandingSection';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../../lib/firebase';
 import { listPortfolios, listenHoldings } from '../../lib/portfolioStore';
@@ -836,6 +837,67 @@ export default function SkanerAIPage() {
           </>
         )}
       </div>
+
+      {/* SEO: sekcja edukacyjna widoczna dla Googlebota w trybie demo */}
+      {!user && (
+        <div className="max-w-3xl mx-auto px-6">
+          <SeoLandingSection
+            title="Jak działa Skaner AI portfela inwestycyjnego?"
+            description="Żuberek AI to inteligentny asystent inwestycyjny, który analizuje Twój portfel i w ciągu 30 sekund generuje profesjonalny raport: ocenę ryzyka, dywersyfikacji, spójności strategii i konkretne kroki do poprawy. Technologia dostępna do tej pory tylko w prywatnej bankowości — teraz bezpłatna dla każdego."
+            features={[
+              {
+                icon: "🤖",
+                title: "Audyt dywersyfikacji portfela",
+                body: "Skaner AI analizuje, czy Twoje aktywa są odpowiednio rozłożone między sektory, kraje i klasy aktywów. Wykrywa niebezpieczną koncentrację (np. zbyt duży udział jednej spółki) i oblicza korelacje między pozycjami w portfelu.",
+              },
+              {
+                icon: "⚠️",
+                title: "Identyfikacja ryzyka koncentracji",
+                body: "Concentration Risk to cichy wróg każdego inwestora. Jeśli jedna spółka stanowi 40% portfela, potencjalna strata jest nieproporcjonalnie wysoka. AI wykrywa takie niebezpieczne proporcje i sugeruje konkretne kroki rebalancingu.",
+              },
+              {
+                icon: "🗺️",
+                title: "Heatmapa zyskowności (Treemap)",
+                body: "Interaktywna mapa portfela wizualizuje każdą pozycję jako kolorowy prostokąt — zielony dla zysku, czerwony dla straty. Rozmiar prostokąta odpowiada udziałowi aktywa w portfelu, co pozwala błyskawicznie zobaczyć, które pozycje dominują i jak radzą sobie wynikowo.",
+              },
+              {
+                icon: "📋",
+                title: "Weryfikacja tezy inwestycyjnej",
+                body: "Każda inwestycja powinna mieć swoją tezę: dlaczego kupujesz dane aktywo i co musi się stać, żeby je sprzedać. Żuberek AI ocenia, czy Twoje pozycje tworzą spójną strategię, czy są przypadkowym zbiorem 'gorących' tipsów z internetu.",
+              },
+              {
+                icon: "✅",
+                title: "Plan działania (Action Steps)",
+                body: "Raport kończy się konkretnym planem działania z krokami posortowanymi według trudności i wpływu. Każdy krok zawiera uzasadnienie i szacowany czas potrzebny na analizę — żadnych ogólnych rad, tylko precyzyjne instrukcje.",
+              },
+              {
+                icon: "🔒",
+                title: "Prywatność i bezpieczeństwo danych",
+                body: "Skaner AI nie ma dostępu do Twojego rachunku maklerskiego. Do generowania raportu używa tylko danych, które sam wprowadzisz: tickerów, liczby akcji i cen zakupu. Żadne dane nie są sprzedawane ani udostępniane stronom trzecim.",
+              },
+            ]}
+            faq={[
+              {
+                q: "Czy skaner AI jest bezpłatny?",
+                a: "Tak, Żuberek AI jest dostępny bezpłatnie w ramach limitowanej puli dziennych audytów. Każdy zalogowany użytkownik może wygenerować raport dla swojego portfela. Limity są odświeżane codziennie, by narzędzie pozostało darmowe dla całej społeczności.",
+              },
+              {
+                q: "Jak skaner AI ocenia mój portfel?",
+                a: "AI analizuje strukturę portfela pod kątem czterech kluczowych wymiarów: (1) Dywersyfikacji — czy masz odpowiednią liczbę pozycji w różnych sektorach, (2) Ryzyka koncentracji — czy żadna pozycja nie dominuje, (3) Dopasowania do celów — czy portfel odpowiada Twojemu wiekowi i tolerancji ryzyka, (4) Spójności strategii — czy poszczególne pozycje tworzą logiczną całość.",
+              },
+              {
+                q: "Czy raport AI to porada inwestycyjna?",
+                a: "Nie. Raport Żuberka AI ma charakter wyłącznie edukacyjny i analityczny. Bazuje na ogólnodostępnych danych i modelach statystycznych. Nie stanowi rekomendacji inwestycyjnej w rozumieniu przepisów prawa. Przed każdą decyzją inwestycyjną skonsultuj się z licencjonowanym doradcą.",
+              },
+              {
+                q: "Jakie aktywa obsługuje skaner AI?",
+                a: "Skaner obsługuje akcje z GPW (np. PKO.WA, CDR.WA), ETF-y europejskie (np. VUAA.DE, VWCE.DE), akcje z NYSE/NASDAQ (np. AAPL, NVDA) oraz inne instrumenty notowane na głównych giełdach światowych. Wystarczy, że masz te aktywa dodane w zakładce 'Mój Portfel'.",
+              },
+            ]}
+            cta={{ label: "Zaloguj się i uruchom audyt AI →", href: "/moj-portfel" }}
+          />
+        </div>
+      )}
     </div>
   );
 }

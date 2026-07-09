@@ -1,88 +1,136 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- ══ Strona główna ══════════════════════════════════════════════════════ -->
   <url>
-    <loc>https://finasfera.pl/</loc>
-    <lastmod>2026-05-17</lastmod>
+    <loc>https://finasfera.pl</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+
+  <!-- ══ Kalkulatory i narzędzia ════════════════════════════════════════════ -->
+  <url>
+    <loc>https://finasfera.pl/symulacja-monte-carlo</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
   </url>
   <url>
     <loc>https://finasfera.pl/skaner-ai</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://finasfera.pl/symulacja-monte-carlo</loc>
-    <lastmod>2026-05-17</lastmod>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://finasfera.pl/moj-portfel</loc>
-    <lastmod>2026-05-17</lastmod>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://finasfera.pl/statystyki</loc>
-    <lastmod>2026-05-17</lastmod>
+    <loc>https://finasfera.pl/kalkulator-inwestycyjny</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://finasfera.pl/fire-path</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://finasfera.pl/moj-portfel</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://finasfera.pl/portfel-inwestycyjny</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://finasfera.pl/statystyki</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ══ Blog — strona główna ═══════════════════════════════════════════════ -->
+  <url>
     <loc>https://finasfera.pl/blog</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- ══ Blog — artykuły ════════════════════════════════════════════════════ -->
+  <url>
+    <loc>https://finasfera.pl/blog/jakie-etfy-kupic-xtb-mbank-bos</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://finasfera.pl/blog/limit-wplat-ike-2026</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://finasfera.pl/blog/symulacja-monte-carlo-emerytura</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://finasfera.pl/blog/jak-zaczac-inwestowac</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://finasfera.pl/blog/emerytura-w-polsce</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- ══ Pozostałe podstrony ════════════════════════════════════════════════ -->
+  <url>
+    <loc>https://finasfera.pl/niezaleznosc-finansowa</loc>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://finasfera.pl/forum</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
-  <url>
-    <loc>https://finasfera.pl/forum/nowy</loc>
-    <lastmod>2026-05-17</lastmod>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://finasfera.pl/kalkulator-inwestycyjny</loc>
-    <lastmod>2026-05-17</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://finasfera.pl/portfel-inwestycyjny</loc>
-    <lastmod>2026-05-17</lastmod>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://finasfera.pl/niezaleznosc-finansowa</loc>
-    <lastmod>2026-05-17</lastmod>
-    <priority>0.6</priority>
-  </url>
+
+  <!-- ══ Strony prawne ═══════════════════════════════════════════════════════ -->
   <url>
     <loc>https://finasfera.pl/zastrzezenie</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://finasfera.pl/polityka-prywatnosci</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://finasfera.pl/cookies</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://finasfera.pl/regulamin</loc>
-    <lastmod>2026-05-17</lastmod>
+    <lastmod>2026-07-09</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
+
 </urlset>

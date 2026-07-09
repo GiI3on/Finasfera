@@ -7,6 +7,7 @@ export const metadata = {
   alternates: {
     canonical: "https://finasfera.pl/statystyki",
   },
+  robots: { index: true, follow: true },
   openGraph: {
     title: "Statystyki Portfela Inwestycyjnego | Finasfera",
     description:
