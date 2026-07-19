@@ -11,6 +11,7 @@ import PortfolioSwitcher from "./PortfolioSwitcher";
 import AddTransactionButton from "./AddTransactionButton";
 import DeleteOrFixModal from "./DeleteOrFixModal";
 import ImportHistoryButton from "./ImportHistoryButton";
+import XtbImportButton from "./XtbImportButton"; // ⬅️ NOWE: import z raportu XTB
 import PortfolioTable from "./PortfolioTable";
 import FireProgress from "./FireProgress";
 import useAllPortfoliosPLN from "../../lib/useAllPortfoliosPLN";
@@ -765,6 +766,11 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
           {currentPortfolioId !== ALL_PORTFOLIO_ID && (
             <>
               <ImportHistoryButton
+                uid={user.uid}
+                portfolioId={currentPortfolioId}
+              />
+              {/* ⬇️ NOWE: import z raportu XTB (.xlsx) do aktualnie wybranego portfela */}
+              <XtbImportButton
                 uid={user.uid}
                 portfolioId={currentPortfolioId}
               />

@@ -43,6 +43,7 @@
     "recharts": "^3.8.1",
     "typescript": "^5.9.2",
     "validator": "^13.15.15",
+    "xlsx": "^0.18.5",
     "yahoo-finance2": "^2.13.3"
   },
   "devDependencies": {
