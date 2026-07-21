@@ -19,7 +19,7 @@ export default function AddTransactionButton({ uid, portfolioId }) {
       <Modal open={open} onClose={() => setOpen(false)} maxWidth="max-w-3xl">
         <ModalHeader title="Dodaj transakcję" onClose={() => setOpen(false)} />
         <ModalBody>
-          <TransactionForm
+          <TransactionForm  
             uid={uid}
             portfolioId={portfolioId}
             onDone={() => setOpen(false)}
