@@ -10,7 +10,11 @@ const fmtPLN = (v) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number.isFinite(Number(v)) ? Number(v) : 0);
+
 const fmtPct = (v) => `${Number(v || 0).toFixed(2)}%`;
+
+// formater: ucina do max 4 miejsc po przecinku, usuwa niepotrzebne zera
+const fmtShares = (v) => parseFloat(Number(v || 0).toFixed(4));
 
 // skracanie nazw
 const SHORT_NAME_MAX = 20;
@@ -42,6 +46,13 @@ function shortDisplayName(name = "", symbol = "") {
 }
 
 export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }) {
+  
+  // 🛠️ FILTR ANTY-WIDMO: Zostawiamy tylko pozycje, które mają więcej niż 0 akcji 
+  // i posiadają jakąkolwiek nazwę lub ticker. To automatycznie ukryje zamknięte pozycje i błędy agregacji.
+  const activeGroups = groups.filter(g => 
+    Number(g.totalShares) > 0.0001 && (g.name || g.pair?.yahoo)
+  );
+
   return (
     <section className="card">
       <div className="card-inner">
@@ -49,7 +60,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
 
         {/* --- WIDOK MOBILNY (KARTY) --- */}
         <div className="md:hidden space-y-4">
-          {groups.map((g) => {
+          {activeGroups.map((g) => {
              const open = expanded.has(g.key);
              const gainUp = g.gain >= 0;
              const gainColor = gainUp ? "text-emerald-400" : "text-red-400";
@@ -89,7 +100,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                     </div>
                     <div>
                         <span className="text-xs text-zinc-500 block">Posiadane akcje</span>
-                        <span className="text-sm text-zinc-300">{g.totalShares} szt.</span>
+                        <span className="text-sm text-zinc-300">{fmtShares(g.totalShares)} szt.</span>
                     </div>
                     <div className="text-right">
                         <span className="text-xs text-zinc-500 block">Śr. cena zakupu</span>
@@ -115,7 +126,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                                   {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
                               </div>
                               <div className="text-xs text-zinc-500">
-                                  {lot.shares} szt. po {fmtPLN(lot.buyPrice || 0)}
+                                  {fmtShares(lot.shares)} szt. po {fmtPLN(lot.buyPrice || 0)}
                               </div>
                             </div>
                             <button
@@ -128,7 +139,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                           
                           {lot.note && (
                             <div className="mt-1 p-2 rounded bg-zinc-900/50 border border-zinc-800/50 text-[11px] text-zinc-400 italic">
-                              <span className="text-zinc-500 mr-1 block mb-0.5 not-italic font-semibold">Teza inwestycyjna:</span>
+                              <span className="text-zinc-500 mr-1 block mb-0.5 not-italic font-semibold">Notatka do transakcji:</span>
                               {lot.note}
                             </div>
                           )}
@@ -167,7 +178,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
             </thead>
 
             <tbody className="text-lg align-middle">
-              {groups.map((g) => {
+              {activeGroups.map((g) => {
                 const open = expanded.has(g.key);
                 const gainUp = g.gain >= 0;
                 const gainBadge = gainUp
@@ -202,7 +213,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                       </td>
 
                       <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">{fmtPLN(g.avgBuy)}</td>
-                      <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">{g.totalShares}</td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">{fmtShares(g.totalShares)}</td>
                       <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">
                         {Number.isFinite(g.price) && g.price > 0 ? fmtPLN(g.price) : "—"}
                       </td>
@@ -249,7 +260,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                                         {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
                                       </td>
                                       <td className="py-2 text-right whitespace-nowrap tabular-nums">{fmtPLN(lot.buyPrice || 0)}</td>
-                                      <td className="py-2 text-right whitespace-nowrap tabular-nums">{lot.shares}</td>
+                                      <td className="py-2 text-right whitespace-nowrap tabular-nums">{fmtShares(lot.shares)}</td>
                                       <td className="py-2 text-right whitespace-nowrap tabular-nums">
                                         {fmtPLN((Number(lot.buyPrice) || 0) * (Number(lot.shares) || 0))}
                                       </td>
@@ -265,7 +276,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                                     {lot.note && (
                                       <tr className={`${i % 2 === 1 ? "bg-zinc-900/30" : ""}`}>
                                         <td colSpan={5} className="py-2 px-4 text-[13px] text-zinc-400 italic border-t border-zinc-800/20 bg-black/20">
-                                          <span className="text-zinc-500 mr-2 not-italic font-semibold">Teza:</span>
+                                          <span className="text-zinc-500 mr-2 not-italic font-semibold">Notatka:</span>
                                           {lot.note}
                                         </td>
                                       </tr>

@@ -1,12 +1,7 @@
 /**
  * Wejście:
- *  - values:  [{ t: "YYYY-MM-DD", value: number }]  // OŚ DZIENNA, przycięta wcześniej
- *  - cashflows: Map<"YYYY-MM-DD", number>           // zewnętrzne CF (EOD), już na tej samej osi
- *
- * Zasady:
- *  - Nie przycinamy tu zakresu – zakładamy, że caller podał właściwy [start..end].
- *  - Dla pierwszego kroku gdy V_{t-1} == 0 → r_t = 0 (brak sensownego dzielnika).
- *  - Formuła dzienna (CF jako EOD): r_t = (V_t - CF_t - V_{t-1}) / V_{t-1}
+ *  - values:  [{ t: "YYYY-MM-DD", value: number }]
+ *  - cashflows: Map<"YYYY-MM-DD", number>
  */
 
 const EPS = 1e-9;
@@ -24,7 +19,6 @@ function sortByDay(a, b) {
   return ta < tb ? -1 : ta > tb ? 1 : 0;
 }
 
-/** Upewnij się, że tablica values jest posortowana i bez duplikatów dni. */
 function normalizeValues(values = []) {
   const map = new Map();
   for (const p of Array.isArray(values) ? values : []) {
@@ -38,12 +32,42 @@ function normalizeValues(values = []) {
     .sort(sortByDay);
 }
 
-/** Główna funkcja TWR – bez dodatkowego „smart” przycinania. */
 export function computeTWR({ values = [], cashflows = new Map() } = {}) {
   const vals = normalizeValues(values);
   if (vals.length <= 1) {
     return { twr: 0, daily: [] };
   }
+
+  // ==========================================
+  // 🛠️ YTD HOLIDAY PATCH (Wsteczne łatanie 1 stycznia)
+  // ==========================================
+  // Jeśli wykres został ucięty (np. przez filtr YTD) w dzień świąteczny, 
+  // system nie ma jak przepisać ceny z "wczoraj". Wtedy wartość na starcie = 0 (lub sama gotówka).
+  if (vals.length > 1) {
+    const v0 = vals[0].value;
+    const v1 = vals[1].value;
+    const cf1 = Number(cashflows instanceof Map ? (cashflows.get(vals[1].t) || 0) : 0) || 0;
+
+    // Jeśli z 1. na 2. dzień portfel "rośnie" o ponad 50% BEZ wpłaty gotówki,
+    // to jest to ewidentny błąd braku wyceny giełdowej w dniu 1.
+    if (v0 > 0 && v1 > (v0 + cf1) * 1.5) {
+      // Nadpisujemy zepsutą wartość z 1 stycznia prawdziwą wartością z 2 stycznia
+      vals[0].value = v1 - cf1; 
+    }
+  }
+
+  // Standardowy smoother dla luk w środku roku (jeśli jakieś święto by się prześlizgnęło)
+  for (let i = 1; i < vals.length - 1; i++) {
+    const prevValue = vals[i - 1].value;
+    const currValue = vals[i].value;
+    const nextValue = vals[i + 1].value;
+    
+    // Jeśli wartość drastycznie spada (V-shape dip) z powodu braku notowań i zaraz wraca
+    if (currValue < prevValue * 0.6 && nextValue > currValue * 1.5) {
+       vals[i].value = prevValue;
+    }
+  }
+  // ==========================================
 
   const daily = [];
   let mult = 1;
@@ -58,10 +82,12 @@ export function computeTWR({ values = [], cashflows = new Map() } = {}) {
     const CF    = Number(cashflows instanceof Map ? (cashflows.get(t) || 0) : 0) || 0;
 
     let r = 0;
-    if (Vprev > EPS) {
-      r = (V - CF - Vprev) / Vprev;
+    const activeCapital = Vprev + CF;
+
+    if (activeCapital > 1) {
+      r = (V - activeCapital) / activeCapital;
     } else {
-      r = 0; // pierwszy krok po starcie inwestycji
+      r = 0;
     }
 
     if (!Number.isFinite(r)) r = 0;
@@ -74,6 +100,5 @@ export function computeTWR({ values = [], cashflows = new Map() } = {}) {
   return { twr, daily };
 }
 
-/** Alias zgodny z dotychczasowymi importami. */
 export const computeTWRSafe = computeTWR;
 export default computeTWR;
