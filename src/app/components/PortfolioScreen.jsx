@@ -11,7 +11,7 @@ import PortfolioSwitcher from "./PortfolioSwitcher";
 import AddTransactionButton from "./AddTransactionButton";
 import DeleteOrFixModal from "./DeleteOrFixModal";
 import ImportHistoryButton from "./ImportHistoryButton";
-import XtbImportButton from "./XtbImportButton"; // ⬅️ NOWE: import z raportu XTB
+import XtbImportButton from "./XtbImportButton";
 import PortfolioTable from "./PortfolioTable";
 import FireProgress from "./FireProgress";
 import useAllPortfoliosPLN from "../../lib/useAllPortfoliosPLN";
@@ -25,6 +25,8 @@ import {
   removeHolding as fsDel,
   addCashOperation as _addCashOperation,
   setLivePortfolioValue,
+  listenGlobalTheses, // <--- NOWE
+  setGlobalThesis     // <--- NOWE
 } from "../../lib/portfolioStore";
 
 /* ==== zakresy ==== */
@@ -226,6 +228,10 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
   const [expanded, setExpanded] = useState(() => new Set());
   const [missingDataRatio, setMissingDataRatio] = useState(0);
 
+  // ⬇️ STANY DO TEZ INWESTYCYJNYCH ⬇️
+  const [theses, setTheses] = useState({});
+  const [thesisModal, setThesisModal] = useState(null);
+
   const [dayPerId, setDayPerId] = useState({});
   const [pairsById, setPairsById] = useState({});
   const [fixLot, setFixLot] = useState(null);
@@ -266,6 +272,40 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
       console.warn("Błąd ładowania celu FIRE:", err);
     }
   }, []);
+
+  // ⬇️ NASŁUCH TEZ Z ZABEZPIECZENIEM (TARCZA OCHRONNA) ⬇️
+  useEffect(() => {
+    if (!user?.uid) return;
+    
+    // Zabezpieczenie przed brakiem funkcji w portfolioStore
+    if (typeof listenGlobalTheses !== "function") {
+      console.warn("Brak funkcji listenGlobalTheses. Ignoruję pobieranie tez.");
+      return;
+    }
+
+    const off = listenGlobalTheses(user.uid, (data) => setTheses(data));
+    return () => {
+      if (typeof off === "function") off();
+    };
+  }, [user?.uid]);
+
+  // ⬇️ ZAPIS TEZY Z ZABEZPIECZENIEM (TARCZA OCHRONNA) ⬇️
+  const handleSaveThesis = async () => {
+    if (!user?.uid || !thesisModal) return;
+
+    if (typeof setGlobalThesis !== "function") {
+      alert("Błąd integracji: Brak funkcji setGlobalThesis w pliku lib/portfolioStore.js!");
+      return;
+    }
+
+    try {
+      await setGlobalThesis(user.uid, thesisModal.ticker, thesisModal.text);
+      setThesisModal(null);
+    } catch (e) {
+      console.error("Błąd zapisu tezy:", e);
+      alert("Wystąpił problem z zapisem tezy.");
+    }
+  };
 
   /* =========================
      HOLDINGS — SINGLE vs ALL
@@ -769,7 +809,6 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
                 uid={user.uid}
                 portfolioId={currentPortfolioId}
               />
-              {/* ⬇️ NOWE: import z raportu XTB (.xlsx) do aktualnie wybranego portfela */}
               <XtbImportButton
                 uid={user.uid}
                 portfolioId={currentPortfolioId}
@@ -848,10 +887,19 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
             </div>
           </section>
 
-          {/* Tabela */}
+          {/* Tabela (Wzbogacona o prop thesys i onOpenThesis) */}
           <PortfolioTable
             groups={groups}
             expanded={expanded}
+            theses={theses}
+            onOpenThesis={(group) => {
+              const ticker = group.pair?.yahoo || group.name;
+              setThesisModal({
+                ticker,
+                name: group.name,
+                text: theses[ticker] || ""
+              });
+            }}
             onToggle={(key) => {
               const s = new Set(expanded);
               s.has(key) ? s.delete(key) : s.add(key);
@@ -875,6 +923,53 @@ export default function PortfolioScreen({ title = "Mój Portfel" }) {
           group={fixLot.group}
           onUndoError={handleUndoError}
         />
+      )}
+
+      {/* ⬇️ NOWE: MODAL TEZY INWESTYCYJNEJ DLA AGENTA AI ⬇️ */}
+      {thesisModal && (
+        <div 
+          className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 px-4" 
+          onClick={() => setThesisModal(null)}
+        >
+          <div 
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl relative" 
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500 rounded-t-2xl"></div>
+            
+            <h3 className="text-xl font-black text-white mb-1 flex items-center gap-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-yellow-500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              Teza Inwestycyjna
+            </h3>
+            
+            <p className="text-zinc-400 text-sm mb-5 flex items-center gap-2">
+              <span className="font-medium text-zinc-300">{thesisModal.name}</span>
+              <span className="px-2 py-0.5 bg-zinc-800/80 border border-zinc-700/50 rounded font-mono text-[10px] text-zinc-300">{thesisModal.ticker}</span>
+            </p>
+            
+            <textarea
+              value={thesisModal.text}
+              onChange={e => setThesisModal(prev => ({ ...prev, text: e.target.value }))}
+              placeholder="Dlaczego inwestujesz w tę spółkę? Jakie masz założenia?&#10;(W przyszłości Twój osobisty Agent AI przeanalizuje te notatki i da Ci znać, jeśli Twoja strategia zacznie się rozjeżdżać z rynkiem)."
+              className="w-full h-44 bg-black/40 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-200 focus:outline-none focus:border-yellow-500/50 resize-none mb-6 leading-relaxed"
+            />
+            
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setThesisModal(null)} 
+                className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+              >
+                Anuluj
+              </button>
+              <button 
+                onClick={handleSaveThesis} 
+                className="px-5 py-2 rounded-lg text-sm bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition-colors shadow-lg shadow-yellow-500/20"
+              >
+                Zapisz do bazy
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

@@ -12,22 +12,14 @@ const fmtPLN = (v) =>
   }).format(Number.isFinite(Number(v)) ? Number(v) : 0);
 
 const fmtPct = (v) => `${Number(v || 0).toFixed(2)}%`;
-
-// formater: ucina do max 4 miejsc po przecinku, usuwa niepotrzebne zera
 const fmtShares = (v) => parseFloat(Number(v || 0).toFixed(4));
 
-// skracanie nazw
 const SHORT_NAME_MAX = 20;
 function shortDisplayName(name = "", symbol = "") {
   const raw = String(name || "").trim();
   if (raw.length <= SHORT_NAME_MAX) return raw;
-
-  const cleaned = raw
-    .replace(/\b(Spółka Akcyjna|Spolka Akcyjna|S\.A\.|SA|Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.?|Limited|Ltd\.?)\b/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  const cleaned = raw.replace(/\b(Spółka Akcyjna|Spolka Akcyjna|S\.A\.|SA|Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.?|Limited|Ltd\.?)\b/gi, "").replace(/\s{2,}/g, " ").trim();
   if (cleaned.length <= SHORT_NAME_MAX) return cleaned;
-
   const words = cleaned.split(/\s+/);
   let out = "";
   for (const w of words) {
@@ -36,22 +28,41 @@ function shortDisplayName(name = "", symbol = "") {
     out = cand;
   }
   if (out.length >= 6) return out;
-
   const acronym = words.map((w) => w[0]).join("").toUpperCase();
   if (acronym.length >= 2 && acronym.length <= SHORT_NAME_MAX) return acronym;
-
   const tick = String(symbol || "").toUpperCase();
   if (tick) return tick.slice(0, SHORT_NAME_MAX);
   return cleaned.slice(0, SHORT_NAME_MAX - 1) + "…";
 }
 
-export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }) {
-  
-  // 🛠️ FILTR ANTY-WIDMO: Zostawiamy tylko pozycje, które mają więcej niż 0 akcji 
-  // i posiadają jakąkolwiek nazwę lub ticker. To automatycznie ukryje zamknięte pozycje i błędy agregacji.
-  const activeGroups = groups.filter(g => 
-    Number(g.totalShares) > 0.0001 && (g.name || g.pair?.yahoo)
-  );
+// ⬇️ DODANE PROPSY: theses oraz onOpenThesis
+export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix, theses = {}, onOpenThesis }) {
+  const activeGroups = groups.filter(g => Number(g.totalShares) > 0.0001 && (g.name || g.pair?.yahoo));
+
+  // Funkcja budująca nasz nowy widżet Tezy Inwestycyjnej
+  const renderThesisBlock = (g) => {
+    const ticker = g.pair?.yahoo || g.name;
+    const thesisText = theses[ticker];
+    return (
+      <div className="mb-4 p-3 md:p-4 rounded-xl bg-yellow-900/10 border border-yellow-500/20 shadow-inner">
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="text-yellow-500 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            Globalna Teza Inwestycyjna
+          </h4>
+          <button 
+            onClick={() => onOpenThesis?.(g)} 
+            className="text-yellow-500 hover:text-yellow-400 text-xs px-2 py-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 transition-colors"
+          >
+            {thesisText ? "Edytuj tezę" : "Dodaj tezę"}
+          </button>
+        </div>
+        <p className={`text-sm leading-relaxed ${thesisText ? "text-zinc-300" : "text-zinc-500 italic"}`}>
+          {thesisText || "Brak zapisanej tezy. Dodaj powód, dla którego wierzysz w tę spółkę, aby w przyszłości Twój osobisty Agent AI mógł analizować decyzje pod kątem Twojej własnej strategii."}
+        </p>
+      </div>
+    );
+  };
 
   return (
     <section className="card">
@@ -117,34 +128,38 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                  </button>
 
                  {open && (
-                   <div className="mt-3 space-y-2 pl-2 border-l-2 border-zinc-800">
-                     {g.lots.map((lot) => (
-                       <div key={lot.id} className="bg-black/20 p-2 rounded text-sm flex flex-col gap-2">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-zinc-300">
-                                  {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
+                   <div className="mt-3 pt-3 border-t-2 border-zinc-800">
+                     {/* WIDŻET TEZY (MOBILNY) */}
+                     {renderThesisBlock(g)}
+                     
+                     <div className="space-y-2 pl-2 border-l-2 border-zinc-800/50">
+                       {g.lots.map((lot) => (
+                         <div key={lot.id} className="bg-black/20 p-2 rounded text-sm flex flex-col gap-2">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <div className="text-zinc-300">
+                                    {lot.buyDate ? new Date(lot.buyDate).toLocaleDateString("pl-PL") : "—"}
+                                </div>
+                                <div className="text-xs text-zinc-500">
+                                    {fmtShares(lot.shares)} szt. po {fmtPLN(lot.buyPrice || 0)}
+                                </div>
                               </div>
-                              <div className="text-xs text-zinc-500">
-                                  {fmtShares(lot.shares)} szt. po {fmtPLN(lot.buyPrice || 0)}
+                              <button
+                                className="text-xs text-yellow-500/80 hover:text-yellow-400 px-2 py-1"
+                                onClick={() => onOpenFix?.(lot, g)}
+                              >
+                                Edytuj
+                              </button>
+                            </div>
+                            {lot.note && (
+                              <div className="mt-1 p-2 rounded bg-zinc-900/50 border border-zinc-800/50 text-[11px] text-zinc-400 italic">
+                                <span className="text-zinc-500 mr-1 block mb-0.5 not-italic font-semibold">Notatka do transakcji:</span>
+                                {lot.note}
                               </div>
-                            </div>
-                            <button
-                              className="text-xs text-yellow-500/80 hover:text-yellow-400 px-2 py-1"
-                              onClick={() => onOpenFix?.(lot, g)}
-                            >
-                              Edytuj
-                            </button>
-                          </div>
-                          
-                          {lot.note && (
-                            <div className="mt-1 p-2 rounded bg-zinc-900/50 border border-zinc-800/50 text-[11px] text-zinc-400 italic">
-                              <span className="text-zinc-500 mr-1 block mb-0.5 not-italic font-semibold">Notatka do transakcji:</span>
-                              {lot.note}
-                            </div>
-                          )}
-                       </div>
-                     ))}
+                            )}
+                         </div>
+                       ))}
+                     </div>
                    </div>
                  )}
                </div>
@@ -198,9 +213,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                           >
                             <span className={`transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>▸</span>
                           </button>
-
                           <CompanyLogo symbol={g.pair?.yahoo} name={g.name} size={24} className="shrink-0" />
-
                           <div className="min-w-0 max-w-full flex items-center gap-2">
                             <span className="block truncate" title={g.name}>
                               {shortDisplayName(g.name, g.pair?.yahoo)}
@@ -211,21 +224,18 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                           </div>
                         </div>
                       </td>
-
                       <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">{fmtPLN(g.avgBuy)}</td>
                       <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">{fmtShares(g.totalShares)}</td>
                       <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">
                         {Number.isFinite(g.price) && g.price > 0 ? fmtPLN(g.price) : "—"}
                       </td>
                       <td className="py-3 px-3 text-right whitespace-nowrap tabular-nums">{fmtPLN(g.value)}</td>
-
                       <td className="py-3 px-3 text-right">
                         <span className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-sm ${gainBadge}`}>
                           <span className="whitespace-nowrap tabular-nums">{fmtPLN(g.gain)}</span>
                           <span className="whitespace-nowrap tabular-nums opacity-80">({fmtPct(g.gainPct)})</span>
                         </span>
                       </td>
-
                       <td className="py-3 pr-2 text-right"></td>
                     </tr>
 
@@ -233,8 +243,11 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                       <tr className="border-t border-zinc-800/60 bg-zinc-950/30">
                         <td colSpan={7} className="py-3 px-4">
                           <div className="rounded-xl bg-zinc-950/60 ring-1 ring-zinc-800/60 p-4">
-                            <div className="text-zinc-400 text-sm mb-3">Zakupy ({g.lots.length})</div>
+                            
+                            {/* WIDŻET TEZY (DESKTOP) */}
+                            {renderThesisBlock(g)}
 
+                            <div className="text-zinc-400 text-sm mb-3">Historia transakcji ({g.lots.length})</div>
                             <table className="w-full text-sm table-fixed">
                               <colgroup>
                                 <col style={{ width: "35%" }} />
@@ -265,12 +278,7 @@ export default function PortfolioTable({ groups, expanded, onToggle, onOpenFix }
                                         {fmtPLN((Number(lot.buyPrice) || 0) * (Number(lot.shares) || 0))}
                                       </td>
                                       <td className="py-2 text-right">
-                                        <button
-                                          className="text-yellow-300 hover:text-yellow-200"
-                                          onClick={() => onOpenFix?.(lot, g)}
-                                        >
-                                          Edytuj
-                                        </button>
+                                        <button className="text-yellow-300 hover:text-yellow-200" onClick={() => onOpenFix?.(lot, g)}>Edytuj</button>
                                       </td>
                                     </tr>
                                     {lot.note && (

@@ -866,3 +866,54 @@ export async function updateHoldingNote(uid, portfolioId, holdingId, note) {
     note: note
   });
 }
+
+/* =========================================================
+   TEZY INWESTYCYJNE (GLOBALNE DLA SPÓŁKI)
+   ========================================================= */
+
+export function listenGlobalTheses(uid, cb) {
+  if (!uid) return () => {};
+  const q = query(collection(db, "users", uid, "theses"));
+  return onSnapshot(q, (snap) => {
+    const out = {};
+    snap.forEach((d) => { out[d.id] = d.data().text || ""; });
+    if (typeof cb === "function") cb(out);
+  });
+}
+
+export async function setGlobalThesis(uid, ticker, text) {
+  if (!uid || !ticker) return;
+  const safeTicker = String(ticker).replace(/\//g, "_").toUpperCase();
+  const ref = doc(db, "users", uid, "theses", safeTicker);
+  await setDoc(ref, { text, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/* =========================================================
+   HISTORIA AUDYTÓW AI
+   ========================================================= */
+export async function saveAiAuditScore(uid, portfolioId, score) {
+  if (!uid) return;
+  const pid = normPortfolioId(portfolioId) || "MAIN";
+  const ref = collection(db, "users", uid, "ai_history");
+  await addDoc(ref, {
+    portfolioId: pid,
+    score: Number(score),
+    ts: serverTimestamp()
+  });
+}
+
+export function listenAiAuditHistory(uid, portfolioId, cb) {
+  if (!uid) return () => {};
+  const pid = normPortfolioId(portfolioId) || "MAIN";
+  const q = query(
+    collection(db, "users", uid, "ai_history"), 
+    where("portfolioId", "==", pid), 
+    orderBy("ts", "desc"), 
+    limit(5)
+  );
+  return onSnapshot(q, snap => {
+    const rows = [];
+    snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+    if (typeof cb === "function") cb(rows);
+  });
+}

@@ -4,9 +4,16 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import SeoLandingSection from '../components/SeoLandingSection';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../../lib/firebase';
-import { listPortfolios, listenHoldings } from '../../lib/portfolioStore';
+import { 
+  listPortfolios, 
+  listenHoldings, 
+  listenGlobalTheses,
+  listenCashBalance, 
+  saveAiAuditScore,  
+  listenAiAuditHistory 
+} from '../../lib/portfolioStore';
 import { resolvePair } from '../../lib/pairs';
-import { Treemap, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { Treemap, ResponsiveContainer, Tooltip as RechartsTooltip, PieChart, Pie, Cell } from 'recharts'; 
 import { useAuth } from '../components/AuthProvider'; 
 
 const DIFFICULTY_CLS = {
@@ -21,9 +28,16 @@ const IMPACT_CLS = {
   low:    'text-zinc-600   border-zinc-800    bg-transparent',
 };
 
-// =======================================================================
-// DANE DEMO DLA NIEZALOGOWANEGO UŻYTKOWNIKA
-// =======================================================================
+const LOADING_STEPS = [
+  "Żuberek weryfikuje dane z giełdy...",
+  "Przeliczam dywersyfikację sektorową...",
+  "Analizuję wpisy z Pamiętnika Inwestora...",
+  "Sprawdzam macierz korelacji aktywów...",
+  "Wykrywam ryzyka koncentracji...",
+  "Dopasowuję strategię do Twojego profilu...",
+  "Przygotowuję finalny plan działania..."
+];
+
 const DEMO_REPORT = {
   score: 62,
   percentile: 65,
@@ -45,7 +59,7 @@ const DEMO_REPORT = {
     { ticker: "XTB.WA", value: 4500, roi: 22.1, pct: 18.3 },
     { ticker: "PKO.WA", value: 4000, roi: 8.5, pct: 16.3 },
     { ticker: "CDR.WA", value: 2500, roi: -15.4, pct: 10.2 },
-    { ticker: "TSLA", value: 2000, roi: -2.1, pct: 8.1 }
+    { ticker: "CASH", value: 2000, roi: 0, pct: 8.1 }
   ],
   holdings_analysis: [
     { ticker: "NVDA", analysis: "NVIDIA jest absolutnym liderem w segmencie chipów AI, co uzasadnia imponującą stopę zwrotu. Wysoka wycena wskaźnikowa (P/E) oznacza jednak podwyższone ryzyko przy ewentualnym spowolnieniu zamówień od firm technologicznych." },
@@ -53,72 +67,45 @@ const DEMO_REPORT = {
     { ticker: "XTB.WA", analysis: "Dynamiczny wzrost liczby klientów oraz sprzyjające środowisko rynkowe w Europie napędzają wyniki XTB. Ekspozycja na tę spółkę to mocny zakład na wysoką zmienność na światowych giełdach." },
     { ticker: "PKO.WA", analysis: "Solidna spółka dywidendowa, której wyniki silnie zależą od stóp procentowych w Polsce. Działa jako defensywna przeciwwaga dla agresywnej części technologicznej." },
     { ticker: "CDR.WA", analysis: "CD Projekt znajduje się w fazie przejściowej między dużymi premierami. Ujemna stopa zwrotu odzwierciedla koszty deweloperskie i długi czas oczekiwania na kolejne hity. Wymaga cierpliwości." },
-    { ticker: "TSLA", analysis: "Presja na marże i silna konkurencja z Chin sprawiają, że Tesla przeżywa trudniejszy okres. Fundamentalnie jednak spółka wciąż dominuje na rynkach zachodnich." }
+    { ticker: "CASH", analysis: "Płynna gotówka stanowi naturalny bufor bezpieczeństwa. W okresach podwyższonej zmienności pozwala na uśrednianie w dół (dokupywanie akcji po przecenie)." }
   ],
-  synergy_and_outliers: "W portfelu występuje synergia między defensywnym charakterem polskich banków (PKO) a agresywnym wzrostem amerykańskich gigantów technologicznych. CDR.WA odstaje obecnie wynikami od reszty stawki, ciążąc na całkowitym zysku portfela.",
-  risk_impact_summary: "Zidentyfikowano ryzyko walutowe (PLN/USD) oraz wrażliwość na wyceny w sektorze tech. Ewentualna korekta w USA silnie odciśnie się na ogólnym wyniku pomimo stabilności polskiej części portfela.",
+  synergy_and_outliers: "W portfelu występuje synergia między defensywnym charakterem polskich banków a agresywnym wzrostem amerykańskich gigantów. Gotówka pełni rolę stabilizatora.",
+  risk_impact_summary: "Zidentyfikowano ryzyko walutowe (PLN/USD) oraz wrażliwość na wyceny w sektorze tech.",
   top_risks: [
-    "NVDA, AAPL, TSLA: Wysoka koncentracja w sektorze technologicznym USA (ok. 55% portfela) czyni portfel wrażliwym na rotację kapitału inwestorów instytucjonalnych.",
-    "XTB.WA, PKO.WA: Znaczna ekspozycja na polski sektor finansowy, który jest historycznie podatny na zmiany regulacyjne i decyzje polityczne.",
-    "Brak ekspozycji na w pełni bezpieczne aktywa (np. obligacje, złoto, gotówka na lokacie) w środowisku wysokich stóp procentowych."
+    "Wysoka koncentracja w sektorze technologicznym USA.",
+    "Znaczna ekspozycja na polski sektor finansowy podatny na zmiany polityczne."
   ],
   top_strengths: [
-    "Solidny fundament wzrostowy dzięki rynkowym liderom z USA posiadającym ogromne przewagi konkurencyjne.",
-    "Dobra równowaga walutowa (podział między USD a PLN) naturalnie zabezpieczająca przed wahaniami złotówki.",
-    "Odpowiedni dobór spółek o wysokiej płynności giełdowej – możliwość błyskawicznego wyjścia z inwestycji w razie kryzysu."
+    "Solidny fundament wzrostowy dzięki rynkowym liderom z USA.",
+    "Dobra równowaga walutowa (USD a PLN) i zachowany bufor gotówkowy."
   ],
   action_steps: [
-    {
-      title: "Redukcja koncentracji w topowych spółkach",
-      difficulty: "medium",
-      impact: "high",
-      why: "Delikatne zrównoważenie wag największych pozycji (szczególnie NVDA) zmniejszy wrażliwość całego portfela na ewentualną korektę w sektorze AI.",
-      time_needed: "1-2 godziny"
-    },
-    {
-      title: "Weryfikacja tezy dla CDR.WA",
-      difficulty: "easy",
-      impact: "medium",
-      why: "Spółka odnotowuje ujemną stopę zwrotu. Należy ocenić i zapisać w pamiętniku inwestora, czy pierwotne powody jej zakupu są nadal aktualne.",
-      time_needed: "30 minut"
-    }
+    { title: "Redukcja koncentracji w topowych spółkach", difficulty: "medium", impact: "high", why: "Zrównoważenie wag największych pozycji zmniejszy wrażliwość na korektę.", time_needed: "1-2 godziny" }
   ]
 };
 
-// =======================================================================
-// KOMUNIKAT O BRAKU TOKENÓW
-// =======================================================================
 function QuotaExceededMessage() {
   return (
     <div className="p-8 bg-zinc-900/80 border border-amber-500/30 rounded-2xl text-center max-w-2xl mx-auto my-8 shadow-xl shadow-amber-500/5 animate-in fade-in zoom-in-95 duration-500">
       <div className="inline-flex items-center justify-center w-12 h-12 rounded-full border border-amber-500/50 bg-amber-500/10 mb-4">
         <span className="text-amber-500 font-black text-xl">!</span>
       </div>
-      
-      <h3 className="text-xl font-black text-white uppercase tracking-wider mb-3">
-        Dzienny limit audytów wyczerpany
-      </h3>
-      
-      <p className="text-zinc-400 leading-relaxed text-sm mb-6">
-        Finasfera znajduje się obecnie w fazie darmowego, wczesnego dostępu. Aby utrzymać to narzędzie całkowicie za darmo, korzystamy z limitowanej puli zapytań do sztucznej inteligencji OpenAI. Niestety, budżet przewidziany na dzisiaj został już w pełni wykorzystany przez społeczność.
-      </p>
-      
+      <h3 className="text-xl font-black text-white uppercase tracking-wider mb-3">Dzienny limit audytów wyczerpany</h3>
+      <p className="text-zinc-400 leading-relaxed text-sm mb-6">Finasfera znajduje się obecnie w fazie darmowego, wczesnego dostępu. Aby utrzymać to narzędzie bezpłatnym, korzystamy z puli zapytań OpenAI, która na dziś została wykorzystana.</p>
       <div className="p-4 bg-black/50 border border-zinc-800 rounded-xl inline-block">
-        <span className="text-amber-500 font-bold text-sm uppercase tracking-widest">
-          Zapraszamy jutro po odnowieniu limitów
-        </span>
+        <span className="text-amber-500 font-bold text-sm uppercase tracking-widest">Zapraszamy jutro po odnowieniu limitów</span>
       </div>
     </div>
   );
 }
-// =======================================================================
 
 function formatPLN(n) {
   if (n === undefined || n === null || isNaN(n)) return '0 PLN';
   return n?.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' PLN';
 }
 
-function getBubbleColor(roi) {
+function getBubbleColor(roi, ticker) {
+  if (ticker === 'CASH') return '#3f3f46'; 
   if (roi <= -20) return '#991b1b'; 
   if (roi < 0) return '#dc2626'; 
   if (roi === 0) return '#52525b'; 
@@ -126,37 +113,54 @@ function getBubbleColor(roi) {
   return '#166534'; 
 }
 
+// =======================================================================
+// POPRAWIONA, CZYTELNA MAPA (HEATMAP)
+// =======================================================================
 const CustomizedTreemapContent = (props) => {
   const { x, y, width, height, name, roi, onClick } = props;
   if (!name || name === 'Portfolio') return null; 
 
-  const color = getBubbleColor(roi);
-  const isLargeEnough = width > 45 && height > 40;
+  const color = getBubbleColor(roi, name);
+  const isLargeEnough = width > 50 && height > 45;
   const area = width * height;
-  const fontSizeTicker = Math.min(18, Math.max(11, Math.sqrt(area) * 0.12));
-  const fontSizeRoi = Math.max(10, fontSizeTicker * 0.75);
+  const fontSizeTicker = Math.min(22, Math.max(12, Math.sqrt(area) * 0.12));
+  const fontSizeRoi = Math.max(10, fontSizeTicker * 0.65);
 
   return (
     <g onClick={() => onClick(name)} className="cursor-pointer group">
+      {/* Tło kafelka z solidnym odstępem (margin) tworzącym luki między nimi */}
       <rect 
-        x={x + 2} 
-        y={y + 2} 
-        width={Math.max(0, width - 4)} 
-        height={Math.max(0, height - 4)} 
+        x={x + 3} 
+        y={y + 3} 
+        width={Math.max(0, width - 6)} 
+        height={Math.max(0, height - 6)} 
         fill={color} 
         rx={8} 
         ry={8}
-        stroke="#27272a" 
+        stroke="#09090b" /* Kolor tła aplikacji (czarny) jako fizyczna bariera */
         strokeWidth={1} 
-        className="transition-all duration-300 group-hover:brightness-125 group-hover:stroke-zinc-300" 
+        className="transition-all duration-300 group-hover:brightness-110" 
+      />
+      {/* Wewnętrzny efekt obramowania (3D/Highlight), by kafelki się nie zlewały */}
+      <rect
+        x={x + 4}
+        y={y + 4}
+        width={Math.max(0, width - 8)}
+        height={Math.max(0, height - 8)}
+        fill="transparent"
+        rx={7}
+        ry={7}
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth={1}
+        style={{ pointerEvents: 'none' }}
       />
       {isLargeEnough && (
         <g style={{ pointerEvents: 'none' }} fontFamily="sans-serif">
-          <text x={x + width / 2} y={y + height / 2 - 2} textAnchor="middle" fill="#ffffff" fontSize={fontSizeTicker} fontWeight="bold" letterSpacing="0.03em">
+          <text x={x + width / 2} y={y + height / 2 - 2} textAnchor="middle" fill="#ffffff" fillOpacity={0.95} fontSize={fontSizeTicker} fontWeight="bold" letterSpacing="0.03em">
             {name.length > 8 ? name.slice(0, 8) + '..' : name}
           </text>
-          <text x={x + width / 2} y={y + height / 2 + fontSizeRoi + 2} textAnchor="middle" fill="#ffffff" fillOpacity={0.9} fontSize={fontSizeRoi} fontWeight="600">
-            {roi > 0 ? '+' : ''}{roi}%
+          <text x={x + width / 2} y={y + height / 2 + fontSizeRoi + 4} textAnchor="middle" fill="#ffffff" fillOpacity={0.7} fontSize={fontSizeRoi} fontWeight="600">
+            {name === 'CASH' ? 'Bufor' : `${roi > 0 ? '+' : ''}${roi}%`}
           </text>
         </g>
       )}
@@ -170,18 +174,20 @@ const CustomTreemapTooltip = ({ active, payload }) => {
     const actualData = data.name ? data : data.payload; 
     if (!actualData || !actualData.name || actualData.name === 'Portfolio') return null;
 
-    const color = getBubbleColor(actualData.roi);
+    const color = getBubbleColor(actualData.roi, actualData.name);
     return (
-      <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl shadow-2xl text-sm min-w-[180px]">
+      <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl shadow-2xl text-sm min-w-[180px] z-50 relative">
         <div className="flex items-center gap-2 mb-3">
           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
           <span className="font-bold text-white text-base tracking-tight">{actualData.name}</span>
         </div>
         <div className="space-y-2">
-          <div className="flex justify-between gap-6 text-zinc-400">
-            <span>Zysk / Strata:</span>
-            <span className="font-semibold" style={{ color: color }}>{actualData.roi > 0 ? '+' : ''}{actualData.roi}%</span>
-          </div>
+          {actualData.name !== 'CASH' && (
+            <div className="flex justify-between gap-6 text-zinc-400">
+              <span>Zysk / Strata:</span>
+              <span className="font-semibold" style={{ color: color }}>{actualData.roi > 0 ? '+' : ''}{actualData.roi}%</span>
+            </div>
+          )}
           <div className="flex justify-between gap-6 text-zinc-400">
             <span>Udział:</span>
             <span className="font-semibold text-white">{actualData.pct}%</span>
@@ -214,7 +220,7 @@ function priceNowFrom({ quote, hist, avgBuy, buyPrice }) {
   return approx > 0 ? approx : 0;
 }
 
-function OnboardingForm({ holdings, portfolios, selectedPortfolioId, onSelectPortfolio, onSubmit, loading, isDataFetching }) {
+function OnboardingForm({ holdings, portfolios, selectedPortfolioId, onSelectPortfolio, onSubmit, loading, isDataFetching, loadingStep }) {
   const [form, setForm] = useState({ age: '', monthlyContribution: '', riskTolerance: 'medium' });
 
   useEffect(() => {
@@ -227,8 +233,34 @@ function OnboardingForm({ holdings, portfolios, selectedPortfolioId, onSelectPor
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const valid = form.age > 0 && form.monthlyContribution !== '' && holdings.length > 0 && !isDataFetching;
 
+  // =======================================================================
+  // DEDYKOWANY EKRAN ŁADOWANIA (Gdy loading = true)
+  // =======================================================================
+  if (loading) {
+    return (
+      <div className="min-h-[65vh] flex flex-col items-center justify-center max-w-lg mx-auto text-center space-y-6 animate-in fade-in zoom-in-95 duration-500">
+        <div className="relative w-32 h-32 mb-4">
+          <div className="absolute inset-0 border-[5px] border-zinc-800 border-t-amber-400 rounded-full animate-[spin_2s_linear_infinite]"></div>
+          <div className="absolute inset-4 border-[5px] border-zinc-800 border-b-emerald-400 rounded-full animate-[spin_1.5s_linear_infinite_reverse]"></div>
+          <div className="absolute inset-0 flex items-center justify-center text-4xl">🤖</div>
+        </div>
+        
+        <h2 className="text-3xl font-extrabold text-white tracking-tight">Żuberek AI pracuje</h2>
+        
+        <div className="h-10 flex items-center justify-center px-8 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full w-full max-w-sm">
+           <p className="text-amber-400 font-mono text-[13px] font-semibold animate-pulse tracking-wide text-center">{LOADING_STEPS[loadingStep]}</p>
+        </div>
+        
+        <p className="text-zinc-500 text-xs leading-relaxed max-w-[280px] mx-auto mt-6">
+          Budowanie modeli statystycznych i analiza może potrwać <strong className="text-zinc-400">do 30 sekund</strong>. Prosimy nie odświeżać strony.
+        </p>
+      </div>
+    );
+  }
+
+  // STANDARDOWY FORMULARZ
   return (
-    <div className="min-h-[70vh] flex flex-col justify-center max-w-lg mx-auto">
+    <div className="min-h-[70vh] flex flex-col justify-center max-w-lg mx-auto animate-in fade-in duration-500">
       <div className="mb-10">
         <h1 className="text-4xl font-extrabold text-white tracking-tight leading-snug">
           Zanim zaczniemy,<br />
@@ -241,7 +273,7 @@ function OnboardingForm({ holdings, portfolios, selectedPortfolioId, onSelectPor
         <div className="mb-6">
           <label className="block text-[11px] text-zinc-500 uppercase tracking-widest mb-2">Portfel do analizy</label>
           <select value={selectedPortfolioId} onChange={e => onSelectPortfolio(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-sm px-4 py-3 rounded-xl outline-none focus:border-zinc-600 transition-colors">
-            <option value="">Portfel główny (suma)</option>
+            <option value="">Portfel główny (suma wszystkich portfeli)</option>
             {portfolios.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
@@ -260,7 +292,7 @@ function OnboardingForm({ holdings, portfolios, selectedPortfolioId, onSelectPor
           <label className="block text-[11px] text-zinc-500 uppercase tracking-widest mb-2">Jak reagujesz gdy portfel spada 20%?</label>
           <div className="grid grid-cols-3 gap-2">
             {[{ val: 'low', label: 'Sprzedaję', sub: 'Niska tolerancja' }, { val: 'medium', label: 'Czekam', sub: 'Średnia tolerancja' }, { val: 'high', label: 'Dokupuję', sub: 'Wysoka tolerancja' }].map(opt => (
-              <button key={opt.val} onClick={() => set('riskTolerance', opt.val)} className={`p-3 rounded-xl border text-left transition-all ${form.riskTolerance === opt.val ? 'border-amber-500/60 bg-amber-500/8 text-white' : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-700'}`}>
+              <button key={opt.val} onClick={() => set('riskTolerance', opt.val)} className={`p-3 rounded-xl border text-left transition-all ${form.riskTolerance === opt.val ? 'border-amber-500/60 bg-amber-500/8 text-amber-500' : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-700'}`}>
                 <p className="text-sm font-semibold">{opt.label}</p>
                 <p className="text-[10px] mt-0.5 opacity-60">{opt.sub}</p>
               </button>
@@ -272,13 +304,13 @@ function OnboardingForm({ holdings, portfolios, selectedPortfolioId, onSelectPor
       <div className="mb-6 flex items-center gap-2 text-[12px]">
         <span className={`w-2 h-2 rounded-full ${isDataFetching ? 'bg-amber-500 animate-pulse' : (holdings.length > 0 ? 'bg-emerald-400' : 'bg-red-500')}`} />
         <span className="text-zinc-400">
-          {holdings.length > 0 ? <>Wykryto <strong className="text-white">{holdings.length}</strong> aktywów w portfelu</> : <>Szukam Twoich aktywów...</>}
+          {holdings.length > 0 ? <>Wykryto <strong className="text-white">{holdings.length}</strong> aktywów (w tym gotówkę)</> : <>Szukam Twoich aktywów...</>}
           {isDataFetching && holdings.length > 0 && <span className="ml-2 text-amber-500/80 italic">(oczekiwanie na ceny z giełdy...)</span>}
         </span>
       </div>
 
-      <button onClick={() => onSubmit(form)} disabled={!valid || loading} className="w-full py-4 bg-amber-400 text-black font-bold text-sm rounded-xl hover:bg-amber-300 active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center gap-3">
-        {loading ? <><span className="w-4 h-4 border-2 border-black/25 border-t-black rounded-full animate-spin" /> Żuberek analizuje...</> : isDataFetching ? 'Czekam na ceny z giełdy...' : 'Uruchom pełną analizę →'}
+      <button onClick={() => onSubmit(form)} disabled={!valid} className="relative w-full py-4 bg-amber-400 text-black font-bold text-[13px] uppercase tracking-widest rounded-xl hover:bg-amber-300 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-3 overflow-hidden">
+        {isDataFetching ? 'Czekam na ceny z giełdy...' : 'Uruchom pełną analizę AI →'}
       </button>
     </div>
   );
@@ -301,17 +333,22 @@ function ScoreBar({ label, value }) {
         <span className="text-[12px] text-zinc-500">{label}</span>
         <span className="text-[12px] text-zinc-300 font-mono font-semibold">{value}</span>
       </div>
-      <div className="h-[3px] bg-zinc-900 rounded-full overflow-hidden">
+      <div className="h-[4px] bg-zinc-900 rounded-full overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${value}%`, background: color }} />
       </div>
     </div>
   );
 }
 
-function Report({ report }) {
+function Report({ report, history }) {
   const [selectedTicker, setSelectedTicker] = useState(null);
   const sc = report.score;
-  const scClass = sc >= 70 ? 'text-emerald-400' : sc >= 45 ? 'text-amber-400' : 'text-red-400';
+  const scColor = sc >= 70 ? '#10b981' : sc >= 45 ? '#f59e0b' : '#ef4444';
+  
+  // Ponieważ nowo dodany wynik jest zawsze na indexie 0 (najświeższy), 
+  // poprzedni skan znajduje się na indexie 1.
+  const prevScore = history && history.length > 1 ? history[1].score : null;
+  const diff = prevScore !== null ? sc - prevScore : null;
 
   const treeData = useMemo(() => {
     if (!report.bubble_data || report.bubble_data.length === 0) return [];
@@ -333,7 +370,7 @@ function Report({ report }) {
   }, [selectedTicker, report.holdings_analysis]);
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-8 pb-16 animate-in fade-in duration-700 slide-in-from-bottom-4">
       <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl mb-4">
         <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Informacja edukacyjna</p>
         <p className="text-[13px] text-zinc-400 leading-relaxed">
@@ -361,24 +398,66 @@ function Report({ report }) {
 
       <section>
         <SectionLabel>Wynik portfela</SectionLabel>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
-          <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className={`text-[88px] leading-none font-black tracking-tighter ${scClass}`}>{sc}</span>
-              <span className="text-zinc-700 text-3xl font-light">/100</span>
-            </div>
-            <p className="text-zinc-400 text-sm mb-1">{sc >= 70 ? 'Solidny portfel' : sc >= 45 ? 'Potencjał do poprawy' : 'Wymaga uwagi'}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+          
+          <div className="flex flex-col items-center md:items-start">
             
-            <div className="mt-4 mb-3">
-              <span className="text-amber-400 text-xl sm:text-2xl font-bold tracking-tight">Lepszy niż {report.percentile}% portfeli</span>
+            {/* ZEGAR GAUGE CHART - IDEALNE PÓŁKOŁO (twarde piksele zamiast procentów) */}
+            <div className="relative w-[240px] h-[120px] mx-auto md:mx-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie 
+                    data={[{value: sc}, {value: 100 - sc}]} 
+                    cx="50%" 
+                    cy="100%" 
+                    startAngle={180} 
+                    endAngle={0} 
+                    innerRadius={80}  /* Zmiana na sztywną wartość */
+                    outerRadius={110} /* Zmiana na sztywną wartość */
+                    dataKey="value" 
+                    stroke="none" 
+                    isAnimationActive={true}
+                  >
+                    <Cell fill={scColor} />
+                    <Cell fill="#27272a" />
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+                <span className="text-6xl font-black leading-none tracking-tighter" style={{ color: scColor }}>{sc}</span>
+              </div>
             </div>
+            {/* KONIEC ZEGARA */}
+            
+            <div className="text-center md:text-left mt-4 w-full">
+              <p className="text-zinc-400 text-[15px] font-medium">{sc >= 70 ? 'Solidny, bezpieczny portfel' : sc >= 45 ? 'Akceptowalne ryzyko, potencjał do poprawy' : 'Wysokie ryzyko, wymaga uwagi'}</p>
+              
+              <div className="mt-4">
+                {diff !== null && diff !== 0 && (
+                  <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold shadow-sm ${diff > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'}`}>
+                    {diff > 0 ? '▲ Wzrost o' : '▼ Spadek o'} {Math.abs(diff)} pkt względem poprzedniego skanu
+                  </div>
+                )}
+                {diff === 0 && history.length > 1 && (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-zinc-800/50 text-zinc-400 border border-zinc-700">
+                    ▶ Wynik bez zmian względem poprzedniego skanu
+                  </div>
+                )}
+                {(history.length === 0 || history.length === 1) && (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-[11.5px] font-bold bg-amber-500/10 text-amber-500/90 border border-amber-500/20">
+                    📌 To Twój pierwszy audyt. Zmiany punktowe pojawią się przy kolejnym skanowaniu.
+                  </div>
+                )}
+              </div>
 
-            <div className="flex flex-wrap gap-2 mt-4">
-              <span className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-500 text-[11px]">{report.pos_count} pozycji · {formatPLN(report.total_value)}</span>
-              <span className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-500/80 text-[11px]">PL: {report.poland_pct}% | Świat: {report.global_pct}%</span>
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-5">
+                <span className="px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 font-medium text-[11px]">{report.pos_count} pozycji · {formatPLN(report.total_value)}</span>
+                <span className="px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-500/90 font-medium text-[11px]">Lepszy niż {report.percentile}% portfeli</span>
+              </div>
             </div>
           </div>
-          <div className="space-y-4 mt-2">
+
+          <div className="space-y-4">
             <ScoreBar label="Dywersyfikacja"       value={report.score_breakdown?.diversification ?? 0} />
             <ScoreBar label="Ryzyko koncentracji"  value={report.score_breakdown?.concentration_risk ?? 0} />
             <ScoreBar label="Dopasowanie do celów" value={report.score_breakdown?.goal_alignment ?? 0} />
@@ -400,11 +479,11 @@ function Report({ report }) {
           
           <div className="flex flex-wrap gap-4 mb-6">
             <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium"><span className="w-2.5 h-2.5 rounded-sm bg-[#16a34a]" />Zyskowna ({'>'} 0%)</span>
-            <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium"><span className="w-2.5 h-2.5 rounded-sm bg-[#52525b]" />Około zera (0%)</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium"><span className="w-2.5 h-2.5 rounded-sm bg-[#3f3f46]" />Gotówka / Bufor</span>
             <span className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-medium"><span className="w-2.5 h-2.5 rounded-sm bg-[#dc2626]" />Stratna ({'<'} 0%)</span>
           </div>
 
-          <div className="h-[400px] w-full py-4 bg-[#09090b] rounded-3xl border border-zinc-800/50 p-2 sm:p-4 mb-4">
+          <div className="h-[450px] w-full py-4 bg-[#09090b] rounded-3xl border border-zinc-800/80 p-2 sm:p-4 mb-4 shadow-inner">
             {treeData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <Treemap
@@ -508,12 +587,8 @@ function Report({ report }) {
             </div>
             
             <p className="text-[15px] text-zinc-300 leading-relaxed whitespace-pre-wrap">
-              {currentAnalysis || "Żuberek AI nie przygotował jeszcze analizy dla tego aktywa. Spróbuj wykonać skan ponownie."}
+              {currentAnalysis || "Żuberek AI nie przygotował jeszcze analizy dla tego aktywa. Z reguły dla samej gotówki analiza nie jest generowana."}
             </p>
-
-            <div className="mt-8 pt-6 border-t border-zinc-900">
-               <p className="text-[11px] text-zinc-600 leading-relaxed">Powyższa analiza jest generowana automatycznie w oparciu o modele językowe i nie uwzględnia nagłych zdarzeń rynkowych. Dane mają charakter edukacyjny i nie stanowią porady inwestycyjnej.</p>
-            </div>
           </div>
         </>
       )}
@@ -528,16 +603,30 @@ export default function SkanerAIPage() {
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolioId, setSelected] = useState('');
   const [report, setReport] = useState(null);
+  
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  
   const [error, setError] = useState(null);
-  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false); // NOWY STAN DLA LIMITÓW
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false); 
   const abortRef = useRef(null);
 
   const [fsHoldings, setFsHoldings] = useState([]);
+  const [cashBalance, setCashBalance] = useState(0); 
+  const [history, setHistory] = useState([]);        
   const [pairsById, setPairsById] = useState({});
   const [quotes, setQuotes] = useState({});
   const [seriesByIdDaily, setSeriesByIdDaily] = useState({});
   const [isDataFetching, setIsDataFetching] = useState(false);
+  const [globalTheses, setGlobalTheses] = useState({});
+
+  useEffect(() => {
+    if (!loading) { setLoadingStep(0); return; }
+    const interval = setInterval(() => {
+      setLoadingStep(prev => Math.min(prev + 1, LOADING_STEPS.length - 1));
+    }, 3500); 
+    return () => clearInterval(interval);
+  }, [loading]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -546,25 +635,86 @@ export default function SkanerAIPage() {
   }, [user?.uid]);
 
   useEffect(() => {
-    if (!user?.uid) { setFsHoldings([]); return; }
-    const unsub = listenHoldings(user.uid, selectedPortfolioId || null, (rows) => {
-      setFsHoldings(Array.isArray(rows) ? rows : []);
-    });
-    return () => unsub?.();
+    if (!user?.uid) return;
+    const off = listenAiAuditHistory(user.uid, selectedPortfolioId, (rows) => setHistory(rows || []));
+    return () => off();
   }, [user?.uid, selectedPortfolioId]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (typeof listenGlobalTheses === "function") {
+      const off = listenGlobalTheses(user.uid, (data) => setGlobalTheses(data || {}));
+      return () => off();
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) { setCashBalance(0); return; }
+    if (selectedPortfolioId === '') {
+      const unsubs = [];
+      const mapByPid = new Map();
+      const emit = () => {
+        let sum = 0;
+        for (const bal of mapByPid.values()) sum += bal;
+        setCashBalance(sum);
+      };
+      const attach = (pid) => {
+        const off = listenCashBalance(user.uid, pid, (data) => {
+          mapByPid.set(pid, data.balance || 0);
+          emit();
+        });
+        if (typeof off === 'function') unsubs.push(off);
+      };
+      attach(null);
+      portfolios.forEach(p => attach(p.id));
+      return () => unsubs.forEach(u => u());
+    } else {
+      const unsub = listenCashBalance(user.uid, selectedPortfolioId, (data) => {
+        setCashBalance(data.balance || 0);
+      });
+      return () => unsub?.();
+    }
+  }, [user?.uid, selectedPortfolioId, portfolios]);
+
+  useEffect(() => {
+    if (!user?.uid) { setFsHoldings([]); return; }
+    if (selectedPortfolioId === '') {
+      const unsubs = [];
+      const mapByPid = new Map();
+      const emit = () => {
+        const merged = [];
+        for (const [pid, rows] of mapByPid.entries()) {
+          for (const r of (rows || [])) {
+            merged.push({ ...r, id: `${pid || "MAIN"}__${r.id}` });
+          }
+        }
+        setFsHoldings(merged);
+      };
+      const attach = (pid) => {
+        const off = pid
+          ? listenHoldings(user.uid, pid, (rows) => { mapByPid.set(pid, rows || []); emit(); })
+          : listenHoldings(user.uid, null, (rows) => { mapByPid.set(null, rows || []); emit(); });
+        if (typeof off === 'function') unsubs.push(off);
+      };
+      attach(null);
+      portfolios.forEach(p => attach(p.id));
+      return () => { unsubs.forEach(u => { try { u(); } catch {} }); };
+    } else {
+      const unsub = listenHoldings(user.uid, selectedPortfolioId, (rows) => setFsHoldings(Array.isArray(rows) ? rows : []));
+      return () => unsub?.();
+    }
+  }, [user?.uid, selectedPortfolioId, portfolios]);
 
   useEffect(() => {
     if (!fsHoldings.length) { setPairsById({}); return; }
     let alive = true;
     (async () => {
       try {
-        const entries = await Promise.all(
-          fsHoldings.map(async (h) => {
-            const base = h?.pair || { yahoo: h?.pair?.yahoo || h?.name };
-            const pair = await resolvePair(base);
-            return [h.id, pair];
-          })
-        );
+        const entries = await Promise.all(fsHoldings.map(async (h) => {
+          const base = h?.pair || { yahoo: h?.pair?.yahoo || h?.name };
+          const pair = await resolvePair(base);
+          return [h.id, pair];
+        }));
         if (alive) setPairsById(Object.fromEntries(entries));
       } catch {
         if (alive) setPairsById({});
@@ -573,27 +723,20 @@ export default function SkanerAIPage() {
     return () => { alive = false; };
   }, [fsHoldings]);
 
-  const quotesSig = useMemo(
-    () => fsHoldings.map(h => `${h.id}|${(pairsById[h.id]?.yahoo || h?.pair?.yahoo || h?.name || "").toUpperCase()}`).sort().join(";"),
-    [fsHoldings, pairsById]
-  );
+  const quotesSig = useMemo(() => fsHoldings.map(h => `${h.id}|${(pairsById[h.id]?.yahoo || h?.pair?.yahoo || h?.name || "").toUpperCase()}`).sort().join(";"), [fsHoldings, pairsById]);
 
   useEffect(() => {
     if (!user?.uid || !fsHoldings.length) { setQuotes({}); return; }
     const controller = new AbortController();
     (async () => {
       try {
-        const list = fsHoldings
-          .map(h => String(pairsById[h.id]?.yahoo || h?.pair?.yahoo || h?.name || "").toUpperCase())
-          .filter(Boolean);
+        const list = fsHoldings.map(h => String(pairsById[h.id]?.yahoo || h?.pair?.yahoo || h?.name || "").toUpperCase()).filter(Boolean);
         if (!list.length) { setQuotes({}); return; }
-
         const url = `/api/quote?symbols=${encodeURIComponent(list.join(","))}`;
         const r = await fetch(url, { signal: controller.signal });
         if (!r.ok) { setQuotes({}); return; }
         const j = await r.json().catch(() => ({}));
         const bySym = j?.quotes || (j?.yahoo ? { [j.yahoo]: j } : {});
-
         const out = {};
         for (const h of fsHoldings) {
           const sym = String((pairsById[h.id]?.yahoo || h?.pair?.yahoo || h?.name || "")).toUpperCase();
@@ -610,27 +753,18 @@ export default function SkanerAIPage() {
     if (!user?.uid || !fsHoldings.length) { setSeriesByIdDaily({}); setIsDataFetching(false); return; }
     const controller = new AbortController();
     setIsDataFetching(true); 
-    
     (async () => {
       try {
-        const items = fsHoldings.map((h) => ({
-          id: h.id,
-          shares: Number(h.shares) || 0,
-          pair: pairsById[h.id] || (h.pair || { yahoo: h?.pair?.yahoo || h?.name }),
-        }));
-        
+        const items = fsHoldings.map((h) => ({ id: h.id, shares: Number(h.shares) || 0, pair: pairsById[h.id] || (h.pair || { yahoo: h?.pair?.yahoo || h?.name }) }));
         const symbols = Array.from(new Set(items.map((it) => String(it.pair?.yahoo || "").toUpperCase()).filter(Boolean)));
-
         const r = await fetch("/api/history/bulk", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ symbols, range: "1y", interval: "1d" }),
           signal: controller.signal,
         });
-        
         const j = r.ok ? await r.json().catch(() => ({})) : {};
         const results = j?.results || {};
-
         const byId = {};
         for (const it of items) {
           const y = String(it.pair?.yahoo || "").toUpperCase();
@@ -638,7 +772,6 @@ export default function SkanerAIPage() {
           const hist = (arr || []).map((p) => ({ t: p?.t, close: Number.isFinite(Number(p?.close)) ? Number(p.close) : null })).filter((p) => p.t && p.close != null);
           byId[it.id] = { history: hist, shares: it.shares };
         }
-
         if (!controller.signal.aborted) {
           setSeriesByIdDaily(byId);
           setIsDataFetching(false); 
@@ -658,15 +791,12 @@ export default function SkanerAIPage() {
       const pair = pairsById[h.id] || h.pair || { yahoo: h.name };
       const sym = String(pair?.yahoo || h.name || "Nieznana").toUpperCase();
 
-      if (!byKey.has(sym)) {
-        byKey.set(sym, { key: sym, name: h.name, lots: [], totalShares: 0, costSum: 0 });
-      }
+      if (!byKey.has(sym)) byKey.set(sym, { key: sym, name: h.name, lots: [], totalShares: 0, costSum: 0 });
       const g = byKey.get(sym);
       const shares = Number(h.shares) || 0;
       const buy = Number(h.buyPrice) || 0;
 
       if (shares <= 0) continue;
-
       g.lots.push(h);
       g.totalShares += shares;
       g.costSum += buy * shares;
@@ -676,7 +806,6 @@ export default function SkanerAIPage() {
     for (const g of byKey.values()) {
       const avgBuy = g.totalShares > 0 ? g.costSum / g.totalShares : 0;
       let price = 0;
-
       for (const lot of g.lots) {
         const q = quotes[lot.id];
         const hist = seriesByIdDaily[lot.id]?.history || [];
@@ -691,22 +820,36 @@ export default function SkanerAIPage() {
       let safeValue = valuePLN;
       if (safeValue <= 0) safeValue = 1;
 
-      const theses = g.lots.map(l => l.note).filter(Boolean);
-      const combinedThesis = theses.length > 0 ? Array.from(new Set(theses)).join(" | ") : null;
+      const globalThesisText = globalTheses[g.key] || "";
+      const localTheses = g.lots.map(l => l.note).filter(Boolean);
+      const combinedLocal = localTheses.length > 0 ? Array.from(new Set(localTheses)).join(" | ") : "";
+      
+      let finalThesis = globalThesisText;
+      if (combinedLocal) {
+        finalThesis = finalThesis ? `${finalThesis} (Notatki z transakcji: ${combinedLocal})` : combinedLocal;
+      }
 
       out.push({
-        ticker: g.key,
-        name: g.name, 
-        shares: g.totalShares,
-        valuePLN: safeValue,
-        value: safeValue,
-        profitPct: profitPct,
-        thesis: combinedThesis
+        ticker: g.key, name: g.name, shares: g.totalShares,
+        valuePLN: safeValue, value: safeValue, profitPct: profitPct,
+        thesis: finalThesis || null
+      });
+    }
+
+    if (cashBalance > 0) {
+      out.push({
+        ticker: "CASH",
+        name: "Wolna gotówka na rachunku",
+        shares: cashBalance,
+        valuePLN: cashBalance,
+        value: cashBalance,
+        profitPct: 0,
+        thesis: "Kapitał ochronny, bufor bezpieczeństwa gotowy do zainwestowania w aktywa w czasie przecen."
       });
     }
 
     return out.sort((a, b) => b.valuePLN - a.valuePLN);
-  }, [fsHoldings, pairsById, quotes, seriesByIdDaily, isDataFetching]);
+  }, [fsHoldings, pairsById, quotes, seriesByIdDaily, isDataFetching, globalTheses, cashBalance]);
 
   useEffect(() => {
     try {
@@ -718,7 +861,7 @@ export default function SkanerAIPage() {
   const clearReport = () => {
     setReport(null);
     setError(null);
-    setIsQuotaExceeded(false); // Resetujemy błąd limitu
+    setIsQuotaExceeded(false);
     localStorage.removeItem('finasfera_ai_report');
   };
 
@@ -742,7 +885,6 @@ export default function SkanerAIPage() {
         }),
       });
       
-      // OBSŁUGA BŁĘDU LIMITÓW (429)
       if (res.status === 429) {
          setIsQuotaExceeded(true);
          setLoading(false);
@@ -751,12 +893,13 @@ export default function SkanerAIPage() {
       
       if (!res.ok) throw new Error((await res.json()).error || 'Błąd serwera');
       const data = await res.json();
+      
+      await saveAiAuditScore(user.uid, selectedPortfolioId, data.score);
+
       setReport(data);
       localStorage.setItem('finasfera_ai_report', JSON.stringify(data));
     } catch (e) {
       if (e.name === 'AbortError') return;
-      
-      // Fallback - jeśli błąd ma w treści "quota" lub "429"
       if (e.message.toLowerCase().includes("quota") || e.message.includes("429") || e.message.toLowerCase().includes("rate limit")) {
           setIsQuotaExceeded(true);
       } else {
@@ -780,10 +923,7 @@ export default function SkanerAIPage() {
               To jest przykładowy raport pokazujący, jak w praktyce działa Żuberek AI. Dane są statyczne i służą wyłącznie celom podglądowym — Twój realny raport będzie w 100% dopasowany do Twojego portfela.
             </p>
             <div className="mt-8">
-              <button 
-                onClick={signIn} 
-                className="px-8 py-3 bg-amber-400 hover:bg-white text-black font-black text-[13px] tracking-widest uppercase rounded-full shadow-[0_0_20px_rgba(251,191,36,0.3)] transition-all active:scale-95"
-              >
+              <button onClick={signIn} className="px-8 py-3 bg-amber-400 hover:bg-white text-black font-black text-[13px] tracking-widest uppercase rounded-full shadow-[0_0_20px_rgba(251,191,36,0.3)] transition-all active:scale-95">
                 Zaloguj się i wykonaj darmowy audyt
               </button>
             </div>
@@ -802,7 +942,7 @@ export default function SkanerAIPage() {
           </header>
         )}
 
-        {user && (
+        {user && !loading && (
           <p className="text-xs text-zinc-600 mb-12 italic border-b border-zinc-900 pb-4">
             Moduł o charakterze ściśle edukacyjnym. Pamiętaj, że inwestowanie wiąże się z ryzykiem utraty kapitału. Nie doradzamy, co kupić lub sprzedać.
           </p>
@@ -810,11 +950,9 @@ export default function SkanerAIPage() {
 
         {error && <div className="mb-8 p-4 bg-red-500/5 border border-red-500/20 rounded-xl text-sm text-red-400">⚠ {error}</div>}
 
-        {/* LOGIKA WYŚWIETLANIA: */}
         {!user ? (
-          <Report report={DEMO_REPORT} />
+          <Report report={DEMO_REPORT} history={[]} />
         ) : isQuotaExceeded ? (
-          // POKAZUJEMY ELEGANCKĄ WIADOMOŚĆ O LIMITACH
           <QuotaExceededMessage />
         ) : !report ? (
           <OnboardingForm 
@@ -825,10 +963,11 @@ export default function SkanerAIPage() {
             onSubmit={runAudit} 
             loading={loading}
             isDataFetching={isDataFetching}
+            loadingStep={loadingStep}
           />
         ) : (
           <>
-            <Report report={report} />
+            <Report report={report} history={history} />
             <div className="mt-16 pt-8 border-t border-zinc-900 text-center">
               <p className="text-[11px] text-zinc-600 leading-relaxed max-w-xl mx-auto">
                 Analizy wygenerowane przez Żuberek AI bazują na ogólnodostępnych danych i modelach sztucznej inteligencji. Treści zawarte w tej sekcji mają na celu budowę świadomości inwestycyjnej i zarządzania ryzykiem. Żadna informacja zawarta w raporcie nie stanowi usługi doradztwa inwestycyjnego.
@@ -838,62 +977,13 @@ export default function SkanerAIPage() {
         )}
       </div>
 
-      {/* SEO: sekcja edukacyjna widoczna dla Googlebota w trybie demo */}
       {!user && (
         <div className="max-w-3xl mx-auto px-6">
           <SeoLandingSection
             title="Jak działa Skaner AI portfela inwestycyjnego?"
-            description="Żuberek AI to inteligentny asystent inwestycyjny, który analizuje Twój portfel i w ciągu 30 sekund generuje profesjonalny raport: ocenę ryzyka, dywersyfikacji, spójności strategii i konkretne kroki do poprawy. Technologia dostępna do tej pory tylko w prywatnej bankowości — teraz bezpłatna dla każdego."
-            features={[
-              {
-                icon: "🤖",
-                title: "Audyt dywersyfikacji portfela",
-                body: "Skaner AI analizuje, czy Twoje aktywa są odpowiednio rozłożone między sektory, kraje i klasy aktywów. Wykrywa niebezpieczną koncentrację (np. zbyt duży udział jednej spółki) i oblicza korelacje między pozycjami w portfelu.",
-              },
-              {
-                icon: "⚠️",
-                title: "Identyfikacja ryzyka koncentracji",
-                body: "Concentration Risk to cichy wróg każdego inwestora. Jeśli jedna spółka stanowi 40% portfela, potencjalna strata jest nieproporcjonalnie wysoka. AI wykrywa takie niebezpieczne proporcje i sugeruje konkretne kroki rebalancingu.",
-              },
-              {
-                icon: "🗺️",
-                title: "Heatmapa zyskowności (Treemap)",
-                body: "Interaktywna mapa portfela wizualizuje każdą pozycję jako kolorowy prostokąt — zielony dla zysku, czerwony dla straty. Rozmiar prostokąta odpowiada udziałowi aktywa w portfelu, co pozwala błyskawicznie zobaczyć, które pozycje dominują i jak radzą sobie wynikowo.",
-              },
-              {
-                icon: "📋",
-                title: "Weryfikacja tezy inwestycyjnej",
-                body: "Każda inwestycja powinna mieć swoją tezę: dlaczego kupujesz dane aktywo i co musi się stać, żeby je sprzedać. Żuberek AI ocenia, czy Twoje pozycje tworzą spójną strategię, czy są przypadkowym zbiorem 'gorących' tipsów z internetu.",
-              },
-              {
-                icon: "✅",
-                title: "Plan działania (Action Steps)",
-                body: "Raport kończy się konkretnym planem działania z krokami posortowanymi według trudności i wpływu. Każdy krok zawiera uzasadnienie i szacowany czas potrzebny na analizę — żadnych ogólnych rad, tylko precyzyjne instrukcje.",
-              },
-              {
-                icon: "🔒",
-                title: "Prywatność i bezpieczeństwo danych",
-                body: "Skaner AI nie ma dostępu do Twojego rachunku maklerskiego. Do generowania raportu używa tylko danych, które sam wprowadzisz: tickerów, liczby akcji i cen zakupu. Żadne dane nie są sprzedawane ani udostępniane stronom trzecim.",
-              },
-            ]}
-            faq={[
-              {
-                q: "Czy skaner AI jest bezpłatny?",
-                a: "Tak, Żuberek AI jest dostępny bezpłatnie w ramach limitowanej puli dziennych audytów. Każdy zalogowany użytkownik może wygenerować raport dla swojego portfela. Limity są odświeżane codziennie, by narzędzie pozostało darmowe dla całej społeczności.",
-              },
-              {
-                q: "Jak skaner AI ocenia mój portfel?",
-                a: "AI analizuje strukturę portfela pod kątem czterech kluczowych wymiarów: (1) Dywersyfikacji — czy masz odpowiednią liczbę pozycji w różnych sektorach, (2) Ryzyka koncentracji — czy żadna pozycja nie dominuje, (3) Dopasowania do celów — czy portfel odpowiada Twojemu wiekowi i tolerancji ryzyka, (4) Spójności strategii — czy poszczególne pozycje tworzą logiczną całość.",
-              },
-              {
-                q: "Czy raport AI to porada inwestycyjna?",
-                a: "Nie. Raport Żuberka AI ma charakter wyłącznie edukacyjny i analityczny. Bazuje na ogólnodostępnych danych i modelach statystycznych. Nie stanowi rekomendacji inwestycyjnej w rozumieniu przepisów prawa. Przed każdą decyzją inwestycyjną skonsultuj się z licencjonowanym doradcą.",
-              },
-              {
-                q: "Jakie aktywa obsługuje skaner AI?",
-                a: "Skaner obsługuje akcje z GPW (np. PKO.WA, CDR.WA), ETF-y europejskie (np. VUAA.DE, VWCE.DE), akcje z NYSE/NASDAQ (np. AAPL, NVDA) oraz inne instrumenty notowane na głównych giełdach światowych. Wystarczy, że masz te aktywa dodane w zakładce 'Mój Portfel'.",
-              },
-            ]}
+            description="Żuberek AI to inteligentny asystent inwestycyjny..."
+            features={[]} 
+            faq={[]} 
             cta={{ label: "Zaloguj się i uruchom audyt AI →", href: "/moj-portfel" }}
           />
         </div>
