@@ -11,7 +11,7 @@ import PortfolioSwitcher from "./PortfolioSwitcher";
 import AddTransactionButton from "./AddTransactionButton";
 import DeleteOrFixModal from "./DeleteOrFixModal";
 import ImportHistoryButton from "./ImportHistoryButton";
-import XtbImportButton from "./XtbImportButton";
+import XtbImportbutton from "./XtbImportbutton";
 import PortfolioTable from "./PortfolioTable";
 import FireProgress from "./FireProgress";
 import useAllPortfoliosPLN from "../../lib/useAllPortfoliosPLN";
